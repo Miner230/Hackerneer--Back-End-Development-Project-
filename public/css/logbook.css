@@ -1,0 +1,215 @@
+/* ==============================
+   Logbook page
+============================== */
+body.logbook {
+	background-image: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/logbookbg.png');
+	background-size: cover;
+	background-attachment: fixed;
+	background-size: fit;
+}
+
+/* ==============================
+   Monster and Loot Card Styling
+============================== */
+.monster-card .card {
+	height: 630px;
+	background-color: rgba(48, 48, 48, 0.9); /* dark stone slab */
+	border: 2px solid #5e5e5e; /* rough stone border */
+	border-radius: 12px;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6); /* heavy shadow for depth */
+	color: #f0e8d8; /* light stone text */
+	padding: 16px;
+	transition:
+		transform 0.3s ease,
+		box-shadow 0.3s ease;
+}
+
+.monster-card .card:hover
+{
+	transform: scale(1.02);
+	box-shadow: 0 8px 14px rgba(0, 0, 0, 0.7);
+	border-color: #a9a9a9; /* highlight border on hover */
+}
+
+.loot-card .card {
+	height: 630px;
+	border: 2px solid #5e5e5e; /* rough stone border */
+	border-radius: 12px;
+	color: #f0e8d8; /* light stone text */
+	padding: 16px;
+	transition:
+		transform 0.3s ease,
+		box-shadow 0.3s ease;
+}
+
+.loot-card .card:hover {
+	transform: scale(1.02);
+}
+/* ==============================
+   Modifier Card Styling
+============================== */
+.modifier-card .card {
+	height: 300px;
+	background-color: rgba(48, 48, 48, 0.9); /* dark stone slab */
+	border: 2px solid #5e5e5e; /* rough stone border */
+	border-radius: 12px;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6); /* heavy shadow for depth */
+}
+
+/* ==============================
+   Tab Pane Styling 
+============================== */
+.nav-tabs {
+	border-bottom: none;
+	background: transparent;
+	gap: 10px;
+}
+
+.nav-tabs .nav-item {
+	margin: 0;
+}
+
+.nav-tabs .nav-link {
+	background-color: rgba(80, 80, 80, 0.6); /* semi-transparent stone-gray */
+	color: #e0dcd1; /* light stone highlight */
+	font-size: 1.125rem;
+	padding: 12px 32px;
+	border: 2px solid #555; /* darker gray edge */
+	border-radius: 6px;
+	transform: translateY(0);
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+	transform: translateY(-2px) scale(1.02);
+	box-shadow: 0 6px 4px rgba(0, 0, 0, 0.4);
+	border-color: #777; /* light gray hover */
+}
+
+.nav-tabs .nav-link.active {
+	background-color: rgba(100, 100, 100, 0.75); /* emphasized darker gray */
+	border: 2px solid #b9b4aa; /* light stone border */
+	color: #fff;
+	transform: translateY(2px) scale(0.98);
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ==============================
+   Search Bar Styling
+============================== */
+#searchBar,
+#searchBarVuln,
+#searchBarReport {
+	border: 2px solid #4c4c4c; /* darker grey edge */
+	background-color: #3a3a3a; /* solid mid-grey */
+	color: #dddddd; /* light grey text */
+	height: 50px;
+	padding: 10px 15px;
+	border-radius: 10px;
+	font-size: 1rem;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+#searchBar::placeholder,
+#searchBarVuln::placeholder,
+#searchBarReport::placeholder {
+	color: #bfbfbf; /* subtle light-grey hint */
+}
+
+#searchBar:focus,
+#searchBarVuln:focus,
+#searchBarReport:focus {
+	outline: none;
+	box-shadow: 0 0 6px rgba(220, 220, 220, 0.25); /* soft glow */
+	border-color: #bbbbbb; /* lighter grey edge */
+	background-color: #444; /* brighter mid-grey */
+	color: #f0f0f0;
+}
+
+/* ==============================
+   Base Card Styling
+============================== */
+.card {
+	border-radius: 12px;
+	box-shadow:
+		inset 0 0 8px rgba(0, 0, 0, 0.6),
+		0 0 12px rgba(0, 0, 0, 0.4);
+	color: #fff;
+	padding: 12px;
+	transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+	box-shadow: 0 0 18px rgba(255, 255, 255, 0.4);
+}
+
+/* ==============================
+   Rarity Colors
+============================== */
+.card.rarity-common {
+	background: linear-gradient(145deg, #555, #333);
+}
+
+.card.rarity-uncommon {
+	background: linear-gradient(145deg, #336633, #224422);
+	border: 2px solid #4aff4a;
+}
+
+.card.rarity-rare {
+	background: linear-gradient(145deg, #2a3d7a, #1e2c5d);
+	border: 2px solid #3fb0ff;
+}
+
+.card.rarity-epic {
+	background: linear-gradient(145deg, #4a2a7a, #331e5d);
+	border: 2px solid #c65bff;
+}
+
+.card.rarity-legendary {
+	background: linear-gradient(145deg, #7a4a2a, #5d331e);
+	border: 2px solid #ffb347;
+}
+
+/* ==============================
+   Rarity Text Effects
+============================== */
+.card.rarity-common .card-title,
+.card.rarity-common .card-text {
+	color: #dedede;
+	text-shadow: 0 0 3px #666;
+}
+
+.card.rarity-uncommon .card-title,
+.card.rarity-uncommon .card-text {
+	color: #a4ffb0;
+	text-shadow:
+		0 0 4px #3cb043,
+		0 0 2px #2e7031;
+}
+
+.card.rarity-rare .card-title,
+.card.rarity-rare .card-text {
+	color: #b5dfff;
+	text-shadow:
+		0 0 6px #3fb0ff,
+		0 0 3px #1e5b89;
+}
+
+.card.rarity-epic .card-title,
+.card.rarity-epic .card-text {
+	color: #e2b8ff;
+	text-shadow:
+		0 0 6px #a24acc,
+		0 0 3px #50246e;
+}
+
+.card.rarity-legendary .card-title,
+.card.rarity-legendary .card-text {
+	color: #ffe6a0;
+	text-shadow:
+		0 0 8px #ffb347,
+		0 0 4px #aa5a00;
+}

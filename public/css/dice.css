@@ -1,0 +1,270 @@
+/* ==============================
+   Base & Reset
+============================== */
+* {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	outline: 0;
+	box-sizing: border-box;
+}
+
+/* ==============================
+   Wrapper Layout
+============================== */
+.dice-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 300px;
+}
+
+.dice-container {
+	position: relative;
+	overflow: visible;
+}
+
+/* ==============================
+   Dice Base Cube
+============================== */
+.dice {
+	position: relative;
+	width: 100px;
+	height: 100px;
+	transform-style: preserve-3d;
+	transition: 1s ease;
+	background: transparent;
+	border: none;
+}
+
+.dice.roll {
+	background: none;
+	cursor: pointer;
+	padding: 0;
+}
+
+/* ==============================
+   Dice Animation (unused class)
+============================== */
+@keyframes rolling {
+	0% {
+		transform: rotateX(0deg) rotateY(0deg);
+	}
+	100% {
+		transform: rotateX(720deg) rotateY(720deg);
+	}
+}
+
+/* ==============================
+   Dice Faces
+============================== */
+.face {
+	position: absolute;
+	width: 100px;
+	height: 100px;
+	background: linear-gradient(145deg, #e6e6e6, #ffffff);
+	border: 4px solid #e0dede;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.front {
+	transform: translateZ(50px);
+}
+.back {
+	transform: rotateX(180deg) translateZ(50px);
+}
+.top {
+	transform: rotateX(90deg) translateZ(50px);
+}
+.bottom {
+	transform: rotateX(-90deg) translateZ(50px);
+}
+.right {
+	transform: rotateY(90deg) translateZ(50px);
+}
+.left {
+	transform: rotateY(-90deg) translateZ(50px);
+}
+
+/* ==============================
+   Dice Pips (Dots)
+============================== */
+.face::before {
+	content: '';
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	display: grid;
+	place-items: center;
+}
+
+/* Face 1 - Center dot */
+.face.front::before {
+	background-image: radial-gradient(circle at center, black 8px, transparent 9px);
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+/* Face 2 - Diagonal */
+.face.top::before {
+	background-image:
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px);
+	background-repeat: no-repeat;
+	background-position:
+		25% 25%,
+		75% 75%;
+	background-size: 12px 12px;
+}
+
+/* Face 3 - Diagonal + center */
+.face.right::before {
+	background-image:
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px);
+	background-repeat: no-repeat;
+	background-position:
+		25% 25%,
+		50% 50%,
+		75% 75%;
+	background-size: 12px 12px;
+}
+
+/* Face 4 - Corners */
+.face.left::before {
+	background-image:
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px);
+	background-repeat: no-repeat;
+	background-position:
+		20% 20%,
+		80% 20%,
+		20% 80%,
+		80% 80%;
+	background-size: 12px 12px;
+}
+
+/* Face 5 - Corners + center */
+.face.bottom::before {
+	background-image:
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px);
+	background-repeat: no-repeat;
+	background-position:
+		20% 20%,
+		80% 20%,
+		50% 50%,
+		20% 80%,
+		80% 80%;
+	background-size: 12px 12px;
+}
+
+/* Face 6 - Grid (2x3) */
+.face.back::before {
+	background-image:
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px),
+		radial-gradient(circle, black 6px, transparent 7px);
+	background-repeat: no-repeat;
+	background-position:
+		20% 20%,
+		80% 20%,
+		20% 50%,
+		80% 50%,
+		20% 80%,
+		80% 80%;
+	background-size: 12px 12px;
+}
+
+/* ==============================
+   Floating Text Effects
+============================== */
+.dup-float,
+.crit-float {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	pointer-events: none;
+	z-index: 10;
+	white-space: nowrap;
+}
+
+.dup-float {
+	top: -40px;
+	color: #00d1ff;
+	font-weight: bold;
+	font-size: 1.1rem;
+	animation: floatUpDup 2s ease-out forwards;
+}
+
+.crit-float {
+	top: -70px;
+	color: #ff3838;
+	font-weight: 900;
+	font-size: 1.4rem;
+	animation: floatShakeCrit 2.2s ease-out forwards;
+}
+
+/* ==============================
+   Floating Animations
+============================== */
+@keyframes floatUpDup {
+	0% {
+		opacity: 1;
+		transform: translate(-50%, 0);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-50%, -30px);
+	}
+}
+
+@keyframes floatShakeCrit {
+	0% {
+		opacity: 1;
+		transform: translate(-50%, 0) rotate(0deg);
+	}
+	10% {
+		transform: translate(-50%, -5px) rotate(-3deg);
+	}
+	20% {
+		transform: translate(-50%, -10px) rotate(3deg);
+	}
+	30% {
+		transform: translate(-50%, -15px) rotate(-3deg);
+	}
+	40% {
+		transform: translate(-50%, -20px) rotate(3deg);
+	}
+	50% {
+		transform: translate(-50%, -25px) rotate(-2deg);
+	}
+	60% {
+		transform: translate(-50%, -30px) rotate(2deg);
+	}
+	70% {
+		transform: translate(-50%, -35px) rotate(-1deg);
+	}
+	80% {
+		transform: translate(-50%, -40px) rotate(1deg);
+	}
+	90% {
+		transform: translate(-50%, -45px) rotate(0deg);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-50%, -50px) rotate(0deg);
+	}
+}

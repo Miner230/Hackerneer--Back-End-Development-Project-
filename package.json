@@ -1,0 +1,28 @@
+{
+	"name": "bed-ca2-miner230",
+	"version": "1.0.0",
+	"description": "You are required to build your folder structures for your project.",
+	"main": "index.js",
+	"scripts": {
+		"test": "jest --forceExit",
+		"start": "node index.js",
+		"dev": "nodemon index.js",
+		"init_tables": "node src/configs/createSchema.js && node src/configs/initTables.js",
+		"format": "prettier --write ."
+	},
+	"author": "Angus Kaile Wight",
+	"license": "ISC",
+	"dependencies": {
+		"bcrypt": "^6.0.0",
+		"dotenv": "^16.6.1",
+		"env": "^0.0.2",
+		"express": "^5.1.0",
+		"jsonwebtoken": "^9.0.2",
+		"mysql2": "^3.14.2",
+		"node": "^20.19.3",
+		"nodemon": "^3.1.10"
+	},
+	"devDependencies": {
+		"prettier": "^3.6.2"
+	}
+}

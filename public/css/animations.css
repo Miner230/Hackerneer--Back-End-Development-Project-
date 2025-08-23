@@ -1,0 +1,40 @@
+/* ==============================
+   Animation Keyframes
+============================== */
+@keyframes paperOpen {
+	0% {
+		transform: rotateX(90deg) scale(0.8);
+		opacity: 0;
+	}
+	60% {
+		transform: rotateX(-20deg) scale(1.02);
+		opacity: 1;
+	}
+	100% {
+		transform: rotateX(0deg) scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes debugClose {
+	from {
+		transform: scale(1) rotateX(0deg);
+		opacity: 1;
+	}
+	to {
+		transform: scale(0.5) rotateX(90deg);
+		opacity: 0.2;
+	}
+}
+
+.paper-animate {
+	transform-origin: top center;
+	animation: paperOpen 0.5s ease forwards;
+	will-change: transform, opacity;
+}
+
+.paper-close {
+	animation: debugClose 1s ease forwards;
+	transform-origin: top center;
+	will-change: transform, opacity;
+}

@@ -1,0 +1,319 @@
+/* ==============================
+   Global Inventory Page Styles
+============================== */
+body.inventory {
+	background-image: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/profilebg.png');
+	background-size: cover;
+	background-attachment: fixed;
+	background-color: #120b06;
+	color: #e7dccc;
+}
+
+/* ==============================
+   Main Container
+============================== */
+.container.main {
+	border: 12px solid #2e1d10;
+	border-radius: 20px;
+	background: linear-gradient(to bottom, #1c120a, #0e0703);
+	padding: 1rem;
+	overflow: visible;
+	max-width: 100%;
+}
+
+/* ==============================
+   Column Layout
+============================== */
+.loot-column {
+	flex: 0 0 40%;
+	max-width: 40%;
+	height: 100%;
+}
+
+.inventory-column {
+	flex: 0 0 60%;
+	max-width: 60%;
+	height: 100%;
+	overflow: visible;
+	position: relative;
+}
+
+.loot-column,
+.inventory-column {
+	box-sizing: border-box;
+}
+
+/* ==============================
+   Inventory Grid
+============================== */
+.inventory-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, 64px);
+	gap: 8px;
+	background: #100c08;
+	padding: 10px;
+	border: 2px solid #442d1b;
+	border-radius: 10px;
+	overflow-y: auto;
+	overflow: visible;
+}
+
+.inventory-slot {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	background-color: #1a1410;
+	border: 1px solid #4b3b2a;
+	border-radius: 6px;
+}
+
+.inventory-slot:hover .tooltip-box {
+	display: block;
+}
+
+/* ==============================
+   Tooltip Styling
+============================== */
+.tooltip-box {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: 70px;
+	z-index: 100;
+	background-color: rgba(0, 0, 0, 0.95);
+	color: white;
+	padding: 8px;
+	border-radius: 6px;
+	width: max-content;
+	max-width: 250px;
+	pointer-events: none;
+	transition: opacity 0.15s ease;
+}
+
+.tooltip-box .item-name {
+	font-weight: bold;
+	color: #ffe761;
+}
+
+.tooltip-box .item-stat {
+	color: #cbbba0;
+}
+
+.tooltip-box .item-lore {
+	font-style: italic;
+	color: #a09483;
+	margin-top: 4px;
+}
+
+/* ==============================
+   Inventory Item Image & Count
+============================== */
+.inventory-slot img {
+	width: 100%;
+	height: 64px;
+	object-fit: contain;
+	pointer-events: none;
+}
+
+.inventory-count {
+	position: absolute;
+	bottom: 2px;
+	right: 4px;
+	color: #fff;
+	font-size: 1.25rem;
+	border-radius: 3px;
+}
+
+/* ==============================
+   Rarity Styles
+============================== */
+.rarity-common.inventory-slot {
+	background: linear-gradient(145deg, #3a3a3a, #1f1f1f);
+	border: 2px solid #888;
+}
+
+.rarity-uncommon.inventory-slot {
+	background: linear-gradient(145deg, #1f331f, #112211);
+	border: 2px solid #3ecc3e;
+}
+
+.rarity-rare.inventory-slot {
+	background: linear-gradient(145deg, #1b274f, #121b38);
+	border: 2px solid #2d89ff;
+}
+
+.rarity-epic.inventory-slot {
+	background: linear-gradient(145deg, #331b4d, #220e3c);
+	border: 2px solid #aa44ff;
+}
+
+.rarity-legendary.inventory-slot {
+	background: linear-gradient(145deg, #4d2b1b, #2f1a0f);
+	border: 2px solid #ffb347;
+}
+
+/* ==============================
+   Responsive Layout
+============================== */
+@media (max-width: 768px) {
+	.row.d-flex {
+		flex-direction: column;
+	}
+
+	.loot-column,
+	.inventory-column {
+		max-width: 100% !important;
+		flex: 0 0 100%;
+		padding: 0.5rem 0;
+	}
+
+	.inventory-grid {
+		justify-content: center;
+	}
+}
+
+@media (max-width: 480px) {
+	.inventory-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+		gap: 8px;
+		padding: 10px;
+		overflow-x: hidden;
+		overflow-y: auto;
+		max-height: 60vh;
+	}
+
+	.inventory-slot {
+		width: 100%;
+		aspect-ratio: 1 / 1;
+	}
+}
+
+/* ==============================
+   Forge Layout & Animation
+============================== */
+.forge-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	position: relative;
+	padding-bottom: 100px;
+}
+
+.forge-image {
+	width: 328px;
+	height: auto;
+}
+
+.floating-item-name {
+	position: absolute;
+	top: 140px;
+	left: 50%;
+	transform: translateX(-50%) translateY(0);
+	opacity: 0;
+	font-weight: bold;
+	font-size: 1.1rem;
+	pointer-events: none;
+	z-index: 10;
+	transition:
+		transform 1.2s ease-out,
+		opacity 1.2s ease-out;
+}
+
+/* ==============================
+   Overlay Modals
+============================== */
+.overlay,
+.claimOverlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 2000;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.overlay-content,
+.claim-overlay-content {
+	background-color: #1a1410;
+	border: 2px solid #4b3b2a;
+	padding: 20px;
+	border-radius: 10px;
+	width: 100%;
+}
+
+.overlay-content {
+	max-width: 400px;
+}
+
+.claim-overlay-content {
+	max-width: 800px;
+	overflow-y: auto;
+}
+
+/* ==============================
+   Claimed Items Grid
+============================== */
+#claimedItemGrid {
+	max-height: 400px;
+	overflow-y: auto;
+	padding-right: 6px;
+}
+
+/* ==============================
+   Number Selector for Quantity
+============================== */
+.number-selector-container {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 1rem;
+}
+
+.number-input {
+	width: 60px;
+	text-align: center;
+	background-color: #1e1e1e;
+	color: #fffacd;
+	border: 2px solid #888;
+	border-radius: 6px;
+	padding: 4px;
+	font-size: 36px;
+	appearance: none;
+}
+
+.number-input:focus {
+	outline: none;
+	border-color: gold;
+	box-shadow: 0 0 6px gold;
+}
+
+.number-btn {
+	background-color: #333;
+	color: #fffacd;
+	border: 2px solid #888;
+	border-radius: 6px;
+	font-size: 18px;
+	width: 52px;
+	height: 52px;
+	cursor: pointer;
+	transition: 0.2s ease;
+}
+
+.number-btn:hover {
+	background-color: #555;
+	border-color: gold;
+}
+
+/* ==============================
+   Number Input Spinner Override
+============================== */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}

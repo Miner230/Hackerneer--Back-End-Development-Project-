@@ -1,0 +1,297 @@
+body.bounty {
+	background-image: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/board.png');
+	background-repeat: repeat;
+	background-attachment: scroll;
+	background-position: top left;
+	background-size: auto;
+}
+
+/* ==============================
+   Vulnerability Cards
+============================== */
+.vulnerabilityList {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: flex-start;
+	gap: 20px;
+}
+
+.vuln-card {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 10px;
+
+	box-sizing: border-box;
+	overflow: hidden;
+	word-break: break-word;
+}
+
+.bounty-card {
+	background: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/paperbackground.png')
+		center no-repeat;
+	background-size: cover;
+	background-repeat: no-repeat;
+
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+
+	width: 100%;
+	max-width: 400px;
+	min-height: 380px;
+	padding: 35px 20px 20px;
+
+	color: black;
+	text-align: left;
+	position: relative;
+	font-size: 1.1875rem;
+
+	transition: transform 0.3s ease;
+	margin: auto;
+	box-sizing: border-box;
+}
+
+.bounty-card h3,
+.bounty-card h5 {
+	margin-bottom: 10px;
+	font-size: 1.40625rem;
+	text-align: center;
+}
+
+.bounty-card p {
+	line-height: 1.4;
+	color: black;
+	font-size: 1rem;
+	text-align: center;
+	padding: 5px;
+}
+
+/* ==============================
+   Overlay Scroll Form
+============================== */
+.report-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 1050;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.7);
+	display: flex;
+	color: black;
+	justify-content: center;
+	align-items: center;
+	padding: 10px;
+	color: #f0e5c4; /* parchment text color */
+	overflow: visible; 
+}
+
+.report-overlay-content,
+.vul-overlay-content {
+	background-color: #5e3a1c; /* parchment-style soft background */
+	border: 2px solid #5e3a1c; /* dark wood border */
+	box-shadow: 0 0 18px rgba(0, 0, 0, 0.4);
+	border-radius: 10px;
+	width: 90%;
+	height: auto;
+	max-width: 1200px;
+	max-height: 90vh;
+	padding: 60px 40px;
+	box-sizing: border-box;
+	color: #f0e5c4; /* parchment text color */
+	overflow: visible; 
+}
+
+.report-overlay-content {
+	max-height: calc(100vh - 40px); /* fit within viewport */
+	overflow-y: auto;  
+	overflow-wrap: break-word; /* modern property */
+	word-wrap: break-word;     /* older browsers */
+	word-break: break-word;    /* ensures break in very long strings */
+}
+
+.report-overlay-content h4,
+.report-overlay-content p {
+	color: #f0e5c4; /* parchment text color */
+}
+
+.report-overlay-content textarea {
+	width: 100%;
+	min-height: 140px;
+	padding: 12px 15px;
+	border: 2px solid #3e2d1a;
+	border-radius: 10px;
+	font-size: 27px;
+	background-color: #4b2d1b;
+	box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+	image-rendering: pixelated;
+	transition:
+		border-color 0.2s ease,
+		background-color 0.2s ease;
+	resize: none;
+	overflow: auto;
+	height: 150px;
+	color: #f0e5c4; /* parchment text color */
+}
+
+.report-overlay-content textarea:focus {
+	outline: none;
+	border-color: #7d4a1d;
+	background-color: #ffffff;
+}
+
+/* ==============================
+   Tab Pane Styling
+============================== */
+.nav-tabs {
+	border-bottom: none;
+	background: transparent;
+	gap: 10px;
+}
+
+.nav-tabs .nav-item {
+	margin: 0;
+}
+
+.nav-tabs .nav-link {
+	background-color: transparent;
+	color: #f4e3c1;
+	font-size: 1.125rem;
+	padding: 12px 32px;
+	border: 2px solid #3e2d1a; /* dark wood border */
+	transform: translateY(0);
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+	border-radius: 6px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+	transform: translateY(-2px) rotateX(1deg);
+	box-shadow: 0 8px 4px rgba(0, 0, 0, 0.3);
+	border-color: #623a15; /* slightly lighter brown on hover */
+}
+
+.nav-tabs .nav-link.active {
+	background-color: rgba(44, 26, 15, 0.7); /* subtle background to show it's active */
+	border: 2px solid #a06d3b; /* lighter wood edge */
+	color: #f4e3c1;
+	transform: translateY(2px) rotateX(-1deg);
+	box-shadow: inset 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ==============================
+   Tab Panes Fixed Size and Scroll
+============================== */
+#report-pane-inner,
+#reviews-pane-inner {
+	width: 100%;
+	max-width: 1200px;
+	overflow-y: auto; /* Enable vertical scroll */
+	padding: 0; /* Removed padding for full fill */
+	box-sizing: border-box;
+}
+
+/* ==============================
+   Search Bar
+============================== */
+#searchBar,
+#searchBarVuln,
+#searchBarReport {
+	border: 2px solid #3b2a14;
+	background-color: #2c1a0f;
+	color: #f8e8c0;
+	height: 50px;
+	padding: 10px 15px;
+	border-radius: 10px;
+}
+
+#searchBar::placeholder,
+#searchBarVuln::placeholder,
+#searchBarReport::placeholder {
+	color: #bba98b;
+}
+
+#searchBar:focus,
+#searchBarVuln:focus,
+#searchBarReport:focus {
+	outline: none;
+	box-shadow: none;
+	border-color: #8b5e3c;
+}
+
+/* ==============================
+   Review Cards
+============================== */
+.review-card-horizontal {
+	background-color: #4b2d1b; /* dark parchment background */
+	color: #f0e5c4; /* parchment text color */
+	border-left: 6px solid #d8a94e; /* aged gold */
+	padding: 15px 20px;
+	margin-bottom: 15px;
+	border-radius: 8px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+	transition:
+		transform 0.3s ease,
+		box-shadow 0.3s ease;
+}
+
+.review-card-horizontal:hover {
+	transform: scale(1.01);
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.review-card-horizontal .col-md-2 {
+	min-width: 120px;
+	color: inherit;
+}
+
+/* ==============================
+   Responsive adjustments
+============================== */
+@media (max-width: 768px) {
+	.report-overlay {
+		overflow: auto !important;
+		align-items: flex-start;
+	}
+
+	.report-overlay-content,
+	.vul-overlay-content {
+		background-image: none !important;
+		border: 2px solid #3e2d1a;
+		box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+		border-radius: 10px;
+		padding: 30px 20px;
+		max-width: 95%;
+		width: 100%;
+		max-height: none;
+		height: auto;
+		overflow: visible;
+	}
+
+	.report-overlay-content textarea,
+	.vul-overlay-content textarea {
+		font-size: 15px;
+		height: 120px;
+	}
+
+	.bounty-card {
+		font-size: 1rem;
+	}
+
+	.nav-tabs .nav-link {
+		font-size: 0.95rem;
+		padding: 10px 20px;
+	}
+
+	#report-pane-inner,
+	#reviews-pane-inner {
+		height: auto !important;
+		max-height: none;
+		padding: 0;
+		overflow-y: visible;
+	}
+}
