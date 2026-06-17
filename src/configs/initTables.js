@@ -23,25 +23,25 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
 		const SQLSTATEMENT = `
   DROP TABLE IF EXISTS user;
 
-  DROP TABLE IF EXISTS Inventory;
+  DROP TABLE IF EXISTS inventory;
 
-  DROP TABLE IF EXISTS Loot;
+  DROP TABLE IF EXISTS loot;
 
-  DROP TABLE IF EXISTS Vulnerability;
+  DROP TABLE IF EXISTS vulnerability;
 
-  DROP TABLE IF EXISTS Monsters;
+  DROP TABLE IF EXISTS monsters;
 
   DROP TABLE IF EXISTS monster_modifiers;
 
   DROP TABLE IF EXISTS delve_modifiers;
 
-  DROP TABLE IF EXISTS Report;
+  DROP TABLE IF EXISTS report;
 
-  DROP TABLE IF EXISTS Review;
+  DROP TABLE IF EXISTS review;
 
-  DROP TABLE IF EXISTS Dice;
+  DROP TABLE IF EXISTS dice;
 
-  DROP TABLE IF EXISTS Delve_Instances;
+  DROP TABLE IF EXISTS delve_instances;
 
   CREATE TABLE user (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -56,7 +56,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       number_of_delve_completed INT DEFAULT 0
   );
 
-  CREATE TABLE Inventory (
+  CREATE TABLE inventory (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
       loot_id INT NOT NULL,
@@ -64,14 +64,14 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       UNIQUE(user_id, loot_id)
   );
 
-  CREATE TABLE Vulnerability (
+  CREATE TABLE vulnerability (
       id INT AUTO_INCREMENT PRIMARY KEY,
       type TEXT NOT NULL,
       description TEXT NOT NULL,
       points INT NOT NULL
   );
 
-  CREATE TABLE Monsters (
+  CREATE TABLE monsters (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT NOT NULL,
@@ -85,7 +85,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
     weight INT NOT NULL
   );
 
-  CREATE TABLE Report (
+  CREATE TABLE report (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     closer_id INT NOT NULL DEFAULT 0,
@@ -95,7 +95,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
     solution TEXT NOT NULL
   );
 
-  CREATE TABLE Review (
+  CREATE TABLE review (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     report_id INT NOT NULL,
@@ -103,7 +103,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
     response TEXT NOT NULL
   );
 
-  CREATE TABLE Dice (
+  CREATE TABLE dice (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
       side_1 INT NOT NULL,
@@ -119,7 +119,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       crit_power INT DEFAULT 200
   );
 
-  CREATE TABLE Delve_Instances (
+  CREATE TABLE delve_instances (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
       monster_id INT NOT NULL,
@@ -133,13 +133,13 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       status VARCHAR(20) DEFAULT 'in progress'
   );
 
-  CREATE TABLE Delve_Modifiers (
+  CREATE TABLE delve_modifiers (
     delve_instance_id INT NOT NULL,
     modifier_id INT NOT NULL,
     PRIMARY KEY (delve_instance_id, modifier_id)
   );
 
-  CREATE TABLE Loot (
+  CREATE TABLE loot (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name TEXT NOT NULL,
     mechanic TEXT NOT NULL,
@@ -160,12 +160,12 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   ("Deevashz2007", '${hash}', 5000, 1.03, 100, 300, 10, 1000000, 5),
   ("CharlesBurger", '${hash}', 500, 1.03, 10, 300, 10, 1000000, 5);
 
-  INSERT INTO Dice (user_id, side_1, side_2, side_3, side_4, side_5, side_6, no_of_rolls, duplication_chance, duplication_number, crit_chance, crit_power)
+  INSERT INTO dice (user_id, side_1, side_2, side_3, side_4, side_5, side_6, no_of_rolls, duplication_chance, duplication_number, crit_chance, crit_power)
   VALUES 
   (1, 10, 10, 10, 10, 10, 10, 5, 100, 1, 100, 20000),
   (2, 10, 10, 10, 10, 10, 10, 13, 100, 7, 100, 2200);
 
-  INSERT INTO Vulnerability (type, description, points)
+  INSERT INTO vulnerability (type, description, points)
   VALUES 
   ("XSS", "Allows attackers to inject malicious scripts into web pages.", 200),
   ("SQL Injection", "Lets attackers manipulate databases via malicious SQL in input fields.", 200),
@@ -189,7 +189,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   ("Exposed .git Directory", "Public .git folders let attackers download code and sensitive info.", 150),
   ("Leaked API Key", "Public API keys allow attackers to abuse services or extract data.", 200);
   
-  INSERT INTO Report (user_id, closer_id, vulnerability_id, status, details, solution) VALUES
+  INSERT INTO report (user_id, closer_id, vulnerability_id, status, details, solution) VALUES
   (1, 1, 1, 1, 'XSS vulnerability on product page review form.', 'Sanitize and encode output to prevent script execution.'),
   (1, 1, 2, 1, 'SQL Injection in search box revealed database entries.', 'Use parameterized queries to prevent SQL injection.'),
   (1, 1, 3, 0, 'CSRF found on account deletion form.', 'Implement CSRF tokens and verify origin headers.'),
@@ -212,7 +212,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   (1, 1, 20, 1, '.git directory exposed in web root.', 'Remove .git from production or deny access via .htaccess.'),
   (1, 1, 21, 0, 'Public repo exposed API key used in production.', 'Revoke and rotate API key, move secrets to config store.');
   
-  INSERT INTO Review (user_id, report_id, rating, response) VALUES
+  INSERT INTO review (user_id, report_id, rating, response) VALUES
   (1, 1, 5, 'Very well documented. Clear description of the XSS impact and solution.'),
   (2, 1, 5, 'Terrific!. Clear description of the XSS impact and solution.'),
   (1, 2, 4, 'Good catch on the SQL injection. Consider adding test cases.'),
@@ -226,7 +226,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   (1, 10, 2, 'Sensitive data exposure issue needs more context and impact assessment.');
 
 
-  INSERT INTO Monsters (name, description, weight)
+  INSERT INTO monsters (name, description, weight)
   VALUES
   ("Zombie", "Slow-moving undead. Hides in dark corners, craving flesh.", 20),
   ("Skeleton", "A pile of bones animated by dark magic, armed with an old sword.", 20),
@@ -273,7 +273,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   ("Fortified", "Takes reduced damage.", 30),
   ("Shiny", "Doubles reward count", 1);
 
-  INSERT INTO Loot (name, mechanic, stat_description, statline, rarity, lore, craft_cost, weight)
+  INSERT INTO loot (name, mechanic, stat_description, statline, rarity, lore, craft_cost, weight)
   VALUES 
   -- Voidstones (+ to enemy level)
   ("Lesser Voidstone", "enemy_level", "+1 to enemy level", 1, "Common", "Stare into the void.", 500, 200),

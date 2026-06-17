@@ -12,7 +12,7 @@ module.exports.selectAllMonsters = (callback) => {
 module.exports.selectAllDelveInstance = (data, callback) => {
 	const SQLSTATMENT = `
         SELECT id, monster_id, monster_name, level, health, roll_attempt, loot_shard_count 
-        FROM Delve_Instances 
+        FROM delve_instances 
         WHERE user_id = ?
     `;
 	const VALUES = [data.userId];
@@ -38,9 +38,9 @@ module.exports.selectDelveInstanceById = (data, callback) => {
             mm.id AS modifier_id,
             mm.name AS modifier_name,
             mm.description AS modifier_description
-        FROM Delve_Instances d
-        JOIN Monsters m ON d.monster_id = m.id
-        LEFT JOIN Delve_Modifiers dm ON dm.delve_instance_id = d.id
+        FROM delve_instances d
+        JOIN monsters m ON d.monster_id = m.id
+        LEFT JOIN delve_modifiers dm ON dm.delve_instance_id = d.id
         LEFT JOIN monster_modifiers mm ON mm.id = dm.modifier_id
         WHERE d.id = ?
     `;
@@ -51,7 +51,7 @@ module.exports.selectDelveInstanceById = (data, callback) => {
 // Create a new delve instance
 module.exports.setDelveInstance = (data, callback) => {
 	const SQLSTATMENT = `
-        INSERT INTO Delve_Instances 
+        INSERT INTO delve_instances 
         (user_id, monster_id, monster_name, level, health, life_regen, damage_reduction, roll_attempt, loot_shard_count)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
@@ -72,7 +72,7 @@ module.exports.setDelveInstance = (data, callback) => {
 // Update a delve instance after a roll
 module.exports.updateDelveInstance = (data, callback) => {
 	const SQLSTATMENT = `
-        UPDATE Delve_Instances
+        UPDATE delve_instances
         SET health = health - ?, roll_attempt = roll_attempt - 1, status = ?
         WHERE id = ?;
     `;
@@ -99,9 +99,9 @@ module.exports.displayDelve = (data, callback) => {
             mm.id AS modifier_id,
             mm.name AS modifier_name,
             mm.description AS modifier_description
-        FROM Delve_Instances d
-        JOIN Monsters m ON d.monster_id = m.id
-        LEFT JOIN Delve_Modifiers dm ON dm.delve_instance_id = d.id
+        FROM delve_instances d
+        JOIN monsters m ON d.monster_id = m.id
+        LEFT JOIN delve_modifiers dm ON dm.delve_instance_id = d.id
         LEFT JOIN monster_modifiers mm ON mm.id = dm.modifier_id
         WHERE d.id = ?
     `;
@@ -120,7 +120,7 @@ module.exports.insertDelveModifiers = (data, callback) => {
 	const VALUES = modifierIds.map((modId) => [delveId, modId]);
 
 	const SQLSTATMENT = `
-        INSERT INTO Delve_Modifiers (delve_instance_id, modifier_id)
+        INSERT INTO delve_modifiers (delve_instance_id, modifier_id)
         VALUES ?
     `;
 	pool.query(SQLSTATMENT, [VALUES], callback);

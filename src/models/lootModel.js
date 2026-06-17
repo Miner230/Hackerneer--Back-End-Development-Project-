@@ -3,7 +3,7 @@ const pool = require('../services/db');
 // Get all loot items
 module.exports.selectAllLoot = (callback) => {
 	const SQLSTATMENT = `
-        SELECT * FROM Loot;
+        SELECT * FROM loot;
     `;
 	pool.query(SQLSTATMENT, callback);
 };
@@ -11,7 +11,7 @@ module.exports.selectAllLoot = (callback) => {
 // Add loot to inventory, or increment quantity if already exists
 module.exports.addLoot = (data, callback) => {
 	const SQLSTATMENT = `
-        INSERT INTO Inventory (user_id, loot_id, quantity)
+        INSERT INTO inventory (user_id, loot_id, quantity)
         VALUES (?, ?, ?)
         ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity);
     `;

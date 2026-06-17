@@ -62,7 +62,7 @@ module.exports.deleteReview = (data, callback) => {
 // Gets info on review based on the user and report
 module.exports.selectReviewByUserAndReport = (data, callback) => {
 	const SQLSTATEMENT = `
-        SELECT * FROM Review
+        SELECT * FROM review
         WHERE user_id = ? AND report_id = ?
         LIMIT 1;
     `;

@@ -4,17 +4,17 @@ const pool = require('../services/db');
 module.exports.selectAllReport = (callback) => {
 	const SQLSTATMENT = `
         SELECT
-            Report.id,
-            Report.user_id,
+            report.id,
+            report.user_id,
             user.username,
-            Report.vulnerability_id,
-            Vulnerability.type AS vulnType,
-            Report.status,
-            Report.details,
-            Report.solution
-        FROM Report
-        JOIN user ON Report.user_id = user.id
-        JOIN Vulnerability ON Report.vulnerability_id = Vulnerability.id;
+            report.vulnerability_id,
+            vulnerability.type AS vulnType,
+            report.status,
+            report.details,
+            report.solution
+        FROM report
+        JOIN user ON report.user_id = user.id
+        JOIN vulnerability ON report.vulnerability_id = vulnerability.id;
     `;
 	pool.query(SQLSTATMENT, callback);
 };
@@ -33,21 +33,21 @@ module.exports.createReport = (data, callback) => {
 module.exports.selectReportById = (data, callback) => {
 	const SQLSTATMENT = `
         SELECT
-            Report.id,
-            Report.user_id,
-            Report.closer_id,
+            report.id,
+            report.user_id,
+            report.closer_id,
             reporter.username AS reporter_username,
             closer.username AS closer_username,
-            Report.vulnerability_id,
-            Vulnerability.type AS vulnType,
-            Report.status,
-            Report.details,
-            Report.solution
-        FROM Report
-        JOIN user AS reporter ON Report.user_id = reporter.id
-        LEFT JOIN user AS closer ON Report.closer_id = closer.id
-        JOIN Vulnerability ON Report.vulnerability_id = Vulnerability.id
-        WHERE Report.id = ?;
+            report.vulnerability_id,
+            vulnerability.type AS vulnType,
+            report.status,
+            report.details,
+            report.solution
+        FROM report
+        JOIN user AS reporter ON report.user_id = reporter.id
+        LEFT JOIN user AS closer ON report.closer_id = closer.id
+        JOIN vulnerability ON report.vulnerability_id = vulnerability.id
+        WHERE report.id = ?;
     `;
 	const VALUES = [data.id];
 	pool.query(SQLSTATMENT, VALUES, callback);
@@ -85,21 +85,21 @@ module.exports.displayReportInfo = (data, callback) => {
 module.exports.displayUpdatedReportInfo = (data, callback) => {
 	const SQLSTATMENT = `
         SELECT
-            Report.id,
-            Report.user_id,
-            Report.closer_id,
+            report.id,
+            report.user_id,
+            report.closer_id,
             reporter.username AS reporter_username,
             closer.username AS closer_username,
-            Report.vulnerability_id,
-            Vulnerability.type AS vulnType,
-            Report.status,
-            Report.details,
-            Report.solution
-        FROM Report
-        JOIN user AS reporter ON Report.user_id = reporter.id
-        LEFT JOIN user AS closer ON Report.closer_id = closer.id
-        JOIN Vulnerability ON Report.vulnerability_id = Vulnerability.id
-        WHERE Report.id = ?;
+            report.vulnerability_id,
+            vulnerability.type AS vulnType,
+            report.status,
+            report.details,
+            report.solution
+        FROM report
+        JOIN user AS reporter ON report.user_id = reporter.id
+        LEFT JOIN user AS closer ON report.closer_id = closer.id
+        JOIN vulnerability ON report.vulnerability_id = vulnerability.id
+        WHERE report.id = ?;
     `;
 	const VALUES = [data.reportId];
 	pool.query(SQLSTATMENT, VALUES, callback);

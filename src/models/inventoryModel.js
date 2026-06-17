@@ -3,9 +3,9 @@ const pool = require('../services/db');
 // Get full inventory for a user
 module.exports.selectInventoryById = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT inventory.*, Loot.name, Loot.mechanic, Loot.stat_description, Loot.statline, Loot.lore, Loot.rarity
+        SELECT inventory.*, loot.name, loot.mechanic, loot.stat_description, loot.statline, loot.lore, loot.rarity
         FROM inventory
-        JOIN Loot ON inventory.loot_id = Loot.id
+        JOIN loot ON inventory.loot_id = loot.id
         WHERE inventory.user_id = ?;
     `;
 	const VALUES = [data.userId];
@@ -15,9 +15,9 @@ module.exports.selectInventoryById = (data, callback) => {
 // Get a specific item from a user's inventory
 module.exports.getItemFromInventory = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT inventory.*, Loot.name, Loot.mechanic, Loot.stat_description, Loot.statline, Loot.lore, Loot.craft_cost, Loot.rarity
+        SELECT inventory.*, loot.name, loot.mechanic, loot.stat_description, loot.statline, loot.lore, loot.craft_cost, loot.rarity
         FROM inventory
-        JOIN Loot ON inventory.loot_id = Loot.id
+        JOIN loot ON inventory.loot_id = loot.id
         WHERE inventory.user_id = ? AND inventory.loot_id = ?;
     `;
 	const VALUES = [data.userId, data.lootId];
