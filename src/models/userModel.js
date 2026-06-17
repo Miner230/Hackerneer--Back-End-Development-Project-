@@ -3,7 +3,7 @@ const pool = require('../services/db');
 // Get all users
 module.exports.selectAll = (callback) => {
 	const SQLSTATMENT = `
-        SELECT * FROM `user`;
+        SELECT * FROM user;
     `;
 	pool.query(SQLSTATMENT, callback);
 };
@@ -11,7 +11,7 @@ module.exports.selectAll = (callback) => {
 // Add a new user
 module.exports.addUser = (data, callback) => {
 	const SQLSTATMENT = `
-        INSERT INTO `user` (username, password)
+        INSERT INTO user (username, password)
         VALUES (?, ?);
     `;
 	const VALUES = [data.username, data.password];
@@ -21,7 +21,7 @@ module.exports.addUser = (data, callback) => {
 // Display newly added user by ID
 module.exports.displayAddedUser = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT * FROM `user` WHERE id = ?;
+        SELECT * FROM user WHERE id = ?;
     `;
 	const VALUES = data;
 	pool.query(SQLSTATMENT, VALUES, callback);
@@ -30,7 +30,7 @@ module.exports.displayAddedUser = (data, callback) => {
 // Check if a username already exists
 module.exports.checkUsername = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT COUNT(*) AS count FROM `user` WHERE username = ?;
+        SELECT COUNT(*) AS count FROM user WHERE username = ?;
     `;
 	const VALUES = [data.username];
 	pool.query(SQLSTATMENT, VALUES, callback);
@@ -39,7 +39,7 @@ module.exports.checkUsername = (data, callback) => {
 // Get a user by ID
 module.exports.selectUserById = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT * FROM `user`
+        SELECT * FROM user
         WHERE id = ?;
     `;
 	const VALUES = [data.id];
@@ -49,17 +49,17 @@ module.exports.selectUserById = (data, callback) => {
 // Gets information from the database about the user without providing sensitive values
 module.exports.selectUserByIdSecure = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT id, username, level, level_up_cost, loot_shard, number_of_delve_completed, reputation, rep_multi, voidstone_count FROM `user`
+        SELECT id, username, level, level_up_cost, loot_shard, number_of_delve_completed, reputation, rep_multi, voidstone_count FROM user
         WHERE id = ?;
     `;
 	const VALUES = [data.id];
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
-// gets the id, username and password from `user` where username provides a specfic value
+// gets the id, username and password from user where username provides a specfic value
 module.exports.selectByUsername = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT id, username, password FROM `user`
+        SELECT id, username, password FROM user
         WHERE username = ?
     `;
 
@@ -70,7 +70,7 @@ module.exports.selectByUsername = (data, callback) => {
 // Update username and reputation for a user
 module.exports.updateUserById = (data, callback) => {
 	const SQLSTATMENT = `
-        UPDATE `user` 
+        UPDATE user 
         SET username = ?, reputation = ?
         WHERE id = ?;
     `;
@@ -81,7 +81,7 @@ module.exports.updateUserById = (data, callback) => {
 // Add reputation based on vulnerability points
 module.exports.updateUserRep = (data, callback) => {
 	const SQLSTATMENT = `
-        UPDATE `user`
+        UPDATE user
         SET reputation = reputation + (
             SELECT points FROM vulnerability WHERE id = ?
         )*?
@@ -94,7 +94,7 @@ module.exports.updateUserRep = (data, callback) => {
 // Increment completed delves and add loot shards
 module.exports.incrementUserStats = (data, callback) => {
 	const SQLSTATMENT = `
-        UPDATE `user`
+        UPDATE user
         SET number_of_delve_completed = number_of_delve_completed + 1, loot_shard = loot_shard + ?
         WHERE id = ?;
     `;
@@ -102,10 +102,10 @@ module.exports.incrementUserStats = (data, callback) => {
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
-// Deduct 1 loot shard from `user`
+// Deduct 1 loot shard from user
 module.exports.decrementLootShard = (data, callback) => {
 	const SQLSTATMENT = `
-        UPDATE `user`
+        UPDATE user
         SET loot_shard = loot_shard - ?
         WHERE id = ?;
     `;
@@ -113,10 +113,10 @@ module.exports.decrementLootShard = (data, callback) => {
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
-// Deduct reputation from `user`
+// Deduct reputation from user
 module.exports.removeRep = (data, callback) => {
 	const SQLSTATMENT = `
-		UPDATE `user`
+		UPDATE user
 		SET reputation = reputation - ?
 		WHERE id = ?
 	`;
@@ -124,11 +124,11 @@ module.exports.removeRep = (data, callback) => {
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
-// Deduct reputation from `user`
+// Deduct reputation from user
 module.exports.selectLeaderboard = (callback) => {
 	const SQLSTATMENT = `
     SELECT username, level, reputation 
-    FROM `user` 
+    FROM user 
     ORDER BY level DESC
     LIMIT 10;
     `;

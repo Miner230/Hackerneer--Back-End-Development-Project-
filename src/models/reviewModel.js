@@ -6,12 +6,12 @@ module.exports.selectReviewsByReportId = (data, callback) => {
         SELECT 
         review.id,
         review.user_id,
-        `user`.username,
+        user.username,
         review.report_id,
         review.rating,
         review.response
     FROM review
-    JOIN `user` ON review.user_id = `user`.id
+    JOIN user ON review.user_id = user.id
     WHERE review.report_id = ?;
     `;
 	const VALUES = [data.id];

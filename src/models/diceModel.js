@@ -13,9 +13,9 @@ module.exports.addDice = (data, callback) => {
 // Get dice details and user level by user ID
 module.exports.selectDiceByUserId = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT Dice.*, `user`.level
+        SELECT Dice.*, user.level
         FROM Dice
-        INNER JOIN `user` ON Dice.user_id = `user`.id
+        INNER JOIN user ON Dice.user_id = user.id
         WHERE Dice.user_id = ?;
     `;
 	const VALUES = [data.id];

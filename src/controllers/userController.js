@@ -83,7 +83,7 @@ module.exports.readUserById = (req, res, next) => {
 	model.selectUserByIdSecure(data, callback);
 };
 
-// Update `user` by ID
+// Update user by ID
 module.exports.updateUserById = (req, res, next) => {
 	if (req.body.username === undefined || req.body.reputation === undefined) {
 		return res.status(400).json({ message: 'Error: username or reputation is undefined' });
@@ -100,7 +100,7 @@ module.exports.updateUserById = (req, res, next) => {
 			console.error('Error updateUserById:', error);
 			res.status(500).json(error);
 		} else if (results.affectedRows === 0) {
-			res.status(404).json({ message: 'Failed to update `user`' });
+			res.status(404).json({ message: 'Failed to update user' });
 		} else {
 			res.status(200).json(data);
 		}
@@ -108,7 +108,7 @@ module.exports.updateUserById = (req, res, next) => {
 	model.updateUserById(data, callback);
 };
 
-// Update `user` reputation after a vulnerability report
+// Update user reputation after a vulnerability report
 module.exports.updateUserRep = (req, res, next) => {
 	data = {
 		userId: res.locals.userId,
@@ -127,7 +127,7 @@ module.exports.updateUserRep = (req, res, next) => {
 	model.updateUserRep(data, callback);
 };
 
-// Update `user` stats after a completed delve
+// Update user stats after a completed delve
 module.exports.updateUserByDelve = (req, res, next) => {
 	if (res.locals.instance_Data[0].health > 0) {
 		return next(); // Only update stats if monster is defeated
@@ -151,15 +151,15 @@ module.exports.updateUserByDelve = (req, res, next) => {
 	model.incrementUserStats(data, callback);
 };
 
-// Remove loot shard(s) from `user`
+// Remove loot shard(s) from user
 module.exports.removeLootShard = (req, res, next) => {
 	const amount = parseInt(req.params.amount) || 1;
 	const user = res.locals.user_data[0];
 
-	if (`user`.loot_shard < amount) {
+	if (user.loot_shard < amount) {
 		return res.status(409).json({ message: 'Not enough loot shards' });
 	}
-	if (`user`.reputation < 150 * amount) {
+	if (user.reputation < 150 * amount) {
 		return res.status(409).json({ message: `Not enough reputation to claim ${amount} loot shard(s)` });
 	}
 
