@@ -21,7 +21,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
 		console.log('Hashed password:', hash);
 
 		const SQLSTATEMENT = `
-  DROP TABLE IF EXISTS User;
+  DROP TABLE IF EXISTS user;
 
   DROP TABLE IF EXISTS Inventory;
 
@@ -43,7 +43,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
 
   DROP TABLE IF EXISTS Delve_Instances;
 
-  CREATE TABLE User (
+  CREATE TABLE user (
       id INT AUTO_INCREMENT PRIMARY KEY,
       username TEXT NOT NULL,
       password TEXT NOT NULL,
@@ -151,7 +151,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
     weight INT NOT NULL
   );
 
-  INSERT INTO User (username, password, reputation, rep_multi, level, level_up_cost, voidstone_count, loot_shard, number_of_delve_completed)
+  INSERT INTO user (username, password, reputation, rep_multi, level, level_up_cost, voidstone_count, loot_shard, number_of_delve_completed)
   VALUES 
   ("Admin", '${hash}', 500000, 1.03, 300, 300, 1, 10, 5),
   ("KingCow", '${hash}', 500000000, 1.03, 1000, 300, 10, 1000000, 5),
