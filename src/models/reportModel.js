@@ -6,14 +6,14 @@ module.exports.selectAllReport = (callback) => {
         SELECT
             Report.id,
             Report.user_id,
-            User.username,
+            `user`.username,
             Report.vulnerability_id,
             Vulnerability.type AS vulnType,
             Report.status,
             Report.details,
             Report.solution
         FROM Report
-        JOIN User ON Report.user_id = User.id
+        JOIN `user` ON Report.user_id = `user`.id
         JOIN Vulnerability ON Report.vulnerability_id = Vulnerability.id;
     `;
 	pool.query(SQLSTATMENT, callback);
@@ -44,8 +44,8 @@ module.exports.selectReportById = (data, callback) => {
             Report.details,
             Report.solution
         FROM Report
-        JOIN User AS reporter ON Report.user_id = reporter.id
-        LEFT JOIN User AS closer ON Report.closer_id = closer.id
+        JOIN `user` AS reporter ON Report.user_id = reporter.id
+        LEFT JOIN `user` AS closer ON Report.closer_id = closer.id
         JOIN Vulnerability ON Report.vulnerability_id = Vulnerability.id
         WHERE Report.id = ?;
     `;
@@ -72,9 +72,9 @@ module.exports.displayReportInfo = (data, callback) => {
             report.status,
             report.user_id,
             report.vulnerability_id,
-            user.reputation AS user_reputation
+            `user`.reputation AS user_reputation
         FROM report
-        JOIN user ON report.user_id = user.id
+        JOIN `user` ON report.user_id = `user`.id
         WHERE report.id = ?;
     `;
 	const VALUES = [data.reportId];
@@ -96,8 +96,8 @@ module.exports.displayUpdatedReportInfo = (data, callback) => {
             Report.details,
             Report.solution
         FROM Report
-        JOIN User AS reporter ON Report.user_id = reporter.id
-        LEFT JOIN User AS closer ON Report.closer_id = closer.id
+        JOIN `user` AS reporter ON Report.user_id = reporter.id
+        LEFT JOIN `user` AS closer ON Report.closer_id = closer.id
         JOIN Vulnerability ON Report.vulnerability_id = Vulnerability.id
         WHERE Report.id = ?;
     `;

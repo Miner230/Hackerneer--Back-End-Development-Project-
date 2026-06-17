@@ -10,10 +10,10 @@ const pepper = process.env.JWT_PEPPER;
 
 // Generate JWT (login/register flows)
 module.exports.generateToken = (req, res, next) => {
-	// Use DB user.id on /login; otherwise use userId set earlier in the chain
+	// Use DB `user`.id on /login; otherwise use userId set earlier in the chain
 	const userId =
 		req.method === 'POST' && req.route.path === '/login'
-			? res.locals.user.id
+			? res.locals.`user`.id
 			: res.locals.userId;
 
 	// Bind a pepper-derived hash to the token to detect tampering
