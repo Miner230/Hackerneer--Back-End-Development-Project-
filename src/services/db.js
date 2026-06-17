@@ -1,15 +1,16 @@
 require('dotenv').config(); //read .env file and set environment variables
 
-const mysql = require('mysql2');
+const mysql = require("mysql2");
 
 const setting = {
-	connectionLimit: 10, //set limit to 10 connection
-	host: process.env.DB_HOST, //get host from environment variable
-	user: process.env.DB_USER, //get user from environment variable
-	password: process.env.DB_PASSWORD, //get password from environment variable
-	database: process.env.DB_DATABASE, //get database from environment variable
-	multipleStatements: true, //allow multiple sql statements
-	dateStrings: true, //return date as string instead of Date object
+  host: process.env.DB_HOST || process.env.MYSQLHOST,
+  port: Number(process.env.DB_PORT || process.env.MYSQLPORT || 3306),
+  user: process.env.DB_USER || process.env.MYSQLUSER,
+  password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD,
+  database: process.env.DB_DATABASE || process.env.MYSQLDATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 };
 
 const pool = mysql.createPool(setting);
