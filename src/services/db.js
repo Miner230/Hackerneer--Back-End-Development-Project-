@@ -8,6 +8,7 @@ const setting = {
   user: process.env.DB_USER || process.env.MYSQLUSER,
   password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD,
   database: process.env.DB_DATABASE || process.env.MYSQLDATABASE,
+  multipleStatements: true,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
