@@ -141,20 +141,57 @@ body.delve.delve-fullscreen .delve-arena {
 }
 
 .monster-hp-stack {
-	width: var(--combat-hud-width);
+	width: 100%;
 	max-width: 100%;
-	margin-inline: auto;
+	margin-inline: 0;
 	min-width: 0;
-}
-
-.monster-hp-stack .combat-mod-tags {
-	margin-top: 0.3rem;
+	flex-shrink: 0;
 }
 
 .monster-unit .combat-unit-hud {
-	width: var(--combat-hud-width);
+	width: 100%;
 	max-width: 100%;
-	margin-inline: auto;
+	margin-inline: 0;
+	min-width: 0;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	overflow: hidden;
+}
+
+.monster-unit .combat-mod-tags,
+.monster-mod-tags {
+	margin-top: 0.3rem;
+	max-height: min(5.5rem, 14cqh);
+	overflow-x: hidden;
+	overflow-y: auto;
+	flex-shrink: 1;
+	min-height: 0;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(180, 140, 220, 0.55) transparent;
+}
+
+.monster-mod-tags::-webkit-scrollbar {
+	width: 5px;
+}
+
+.monster-mod-tags::-webkit-scrollbar-thumb {
+	background: rgba(180, 140, 220, 0.55);
+	border-radius: 4px;
+}
+
+.monster-unit .combat-unit-header,
+.monster-unit .monster-hp-stack {
+	flex-shrink: 0;
+}
+
+.monster-unit .combat-unit-header {
+	flex-wrap: wrap;
+}
+
+.monster-unit .combat-unit-meta {
+	justify-content: flex-end;
 }
 
 .mod-tag {
@@ -276,32 +313,64 @@ body.delve.delve-fullscreen .delve-arena {
 .combat-unit {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: stretch;
 	min-width: 0;
 	min-height: 0;
 	height: 100%;
+	width: var(--combat-hud-width);
+	max-width: 100%;
+	justify-self: center;
 }
 
 .player-unit {
-	justify-self: start;
+	justify-self: center;
 }
 
 .monster-unit {
-	justify-self: end;
+	justify-self: center;
+}
+
+.monster-unit.combat-unit {
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	align-items: stretch;
+}
+
+.monster-unit .combat-display {
+	min-height: 0;
+	width: 100%;
+	max-width: 100%;
+	margin-inline: 0;
+	justify-content: center;
+	justify-self: center;
+}
+
+.player-unit .combat-display {
+	width: 100%;
+	max-width: 100%;
+	margin-inline: 0;
+	justify-content: center;
+}
+
+.monster-unit .combat-unit-hud {
+	margin-bottom: 0;
 }
 
 .combat-unit-hud {
 	width: 100%;
 	margin-bottom: 0.3rem;
 	flex-shrink: 0;
+	box-sizing: border-box;
 }
 
 .combat-unit-header {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--combat-header-gap);
 	margin-bottom: var(--combat-header-margin-bottom);
+	width: 100%;
+	min-width: 0;
 }
 
 .combat-unit-name {
@@ -327,20 +396,17 @@ body.delve.delve-fullscreen .delve-arena {
 .combat-unit-meta {
 	display: flex;
 	gap: var(--combat-meta-gap);
-	flex-shrink: 0;
+	flex-shrink: 1;
 	flex-wrap: wrap;
 	justify-content: flex-end;
+	min-width: 0;
+	max-width: 100%;
 }
 
 .combat-unit-health {
 	margin: 0;
-}
-
-.player-unit .combat-unit-hud > .monster-health-bar,
-.player-unit .combat-unit-hud > .combat-unit-hp-text {
-	width: var(--combat-hud-width);
+	width: 100%;
 	max-width: 100%;
-	margin-inline: auto;
 }
 
 .combat-unit-hp-text {
@@ -348,19 +414,14 @@ body.delve.delve-fullscreen .delve-arena {
 	font-size: var(--combat-hp-text-size);
 	color: rgba(255, 255, 255, 0.72);
 	text-align: center;
-}
-
-.player-unit .combat-unit-hud {
-	width: var(--combat-hud-width);
-	max-width: 100%;
-	margin-inline: auto;
+	width: 100%;
 }
 
 .combat-unit-desc {
 	margin: 0.2rem 0 0;
-	width: var(--combat-hud-width);
+	width: 100%;
 	max-width: 100%;
-	margin-inline: auto;
+	margin-inline: 0;
 	font-size: var(--combat-desc-font-size);
 	line-height: var(--combat-desc-line-height);
 	color: rgba(255, 255, 255, 0.68);
@@ -1322,19 +1383,13 @@ body.delve.delve-fullscreen .delve-arena {
 		padding: 0.48rem 1.2rem;
 	}
 
+	.monster-mod-tags {
+		max-height: min(6.5rem, 12cqh);
+	}
+
 	.battlefield-layout {
 		gap: 0.65rem;
 		padding: 0.45rem 0.75rem 0.55rem;
-	}
-
-	.player-unit .combat-display {
-		justify-content: flex-end;
-		padding-inline-end: 0.35rem;
-	}
-
-	.monster-unit .combat-display {
-		justify-content: flex-start;
-		padding-inline-start: 0.35rem;
 	}
 }
 
@@ -1375,6 +1430,10 @@ body.delve.delve-fullscreen .delve-arena {
 	.delve-combat-log-toggle {
 		font-size: 0.98rem;
 		padding: 0.52rem 1.32rem;
+	}
+
+	.monster-mod-tags {
+		max-height: min(7.5rem, 11cqh);
 	}
 
 	.battlefield-layout {
