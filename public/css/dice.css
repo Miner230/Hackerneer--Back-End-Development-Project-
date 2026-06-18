@@ -1,20 +1,33 @@
 /* ==============================
-   Dice Variables & Layout
+   Dice shape — ThomasGRBT/dice-roll (GPL-3.0)
+   https://github.com/ThomasGRBT/dice-roll
+   Rounded 3D cube with inner faces and pip dots.
 ============================== */
 :root {
 	--dice-size: 108px;
 	--dice-scene-size: calc(var(--dice-size) * 1.7);
-	--dice-overshoot: 4px;
-	--dice-face-size: calc(var(--dice-size) + var(--dice-overshoot));
-	--dice-face-inset: calc(var(--dice-overshoot) / -2);
-	--dice-half: calc(var(--dice-size) / 2);
 	--dice-pip: calc(var(--dice-size) * 0.148);
-	--dice-face: #f2f2f2;
-	--dice-edge: #c8c8c8;
-	--dice-core: #e6e6e6;
+
+	--dice-perspective: calc(var(--dice-size) * 2);
+	--dice-half: calc(var(--dice-size) / 2);
+	--dice-half-small: calc(var(--dice-half) - 2px);
+	--dice-border-radius: calc(var(--dice-size) * 0.12);
+
+	--dice-color: #f4f4f4;
+	--dice-shadow-color: rgba(0, 0, 0, 0.14);
+	--dice-inner-color: #e2e2e2;
+	--dice-disable-color: #dddddd;
+	--dice-disable-shadow-color: rgba(0, 0, 0, 0.1);
+	--dice-disable-inner-color: #d4d4d4;
+	--dice-hover-color: #ffffff;
+	--dice-hover-shadow-color: rgba(0, 0, 0, 0.1);
+	--dice-hover-inner-color: #ececec;
 	--dice-pip-color: #1a1a1a;
 }
 
+/* ==============================
+   Layout — delve integration
+============================== */
 .dice-wrapper {
 	display: flex;
 	flex-direction: column;
@@ -34,24 +47,11 @@
 	position: relative;
 	width: 100%;
 	height: 100%;
-	perspective: 1100px;
+	perspective: var(--dice-perspective);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	overflow: visible;
-}
-
-.dice-cube {
-	position: relative;
-	width: var(--dice-size);
-	height: var(--dice-size);
-	transform-style: preserve-3d;
-	-webkit-transform-style: preserve-3d;
-	transform-origin: center center;
-}
-
-.dice-shadow {
-	display: none;
 }
 
 .dice-roll-btn {
@@ -76,7 +76,7 @@
 	pointer-events: none;
 }
 
-.dice-roll-btn .dice-cube {
+.dice-roll-btn .dice {
 	pointer-events: none;
 }
 
@@ -90,170 +90,236 @@
 	pointer-events: none;
 }
 
-.dice-cube.is-rolling {
-	transition: transform 0.95s cubic-bezier(0.18, 0.84, 0.32, 1);
-}
-
 /* ==============================
-   Inner core — fills void visible at seams
+   3D cube — ThomasGRBT structure
 ============================== */
-.dice-core {
-	position: absolute;
-	left: 0;
-	top: 0;
+.dice-scene .dice {
+	cursor: pointer;
 	width: var(--dice-size);
 	height: var(--dice-size);
-	background: var(--dice-core);
-	transform: translateZ(0);
-	box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.08);
-	pointer-events: none;
+	position: relative;
+	transform: translateZ(calc(var(--dice-half) * -1));
+	transform-style: preserve-3d;
+	-webkit-transform-style: preserve-3d;
+	transition: transform 1000ms;
 }
 
-/* ==============================
-   Dice Faces (tight overlapping cube)
-============================== */
-.dice-face {
+.dice-scene .dice.is-rolling {
+	transition: transform 1000ms;
+}
+
+.dice-scene .dice.disable .face {
+	background: var(--dice-disable-color);
+	box-shadow: inset 0 0 var(--dice-border-radius) var(--dice-disable-shadow-color);
+}
+
+.dice-scene .dice.disable .face.face-inner,
+.dice-scene .dice.disable .face-fill {
+	background-color: var(--dice-disable-inner-color);
+	box-shadow: none;
+}
+
+.dice-scene .dice.disable:hover .face,
+.dice-scene .dice:hover .face {
+	background: var(--dice-hover-color);
+	box-shadow: inset 0 0 var(--dice-border-radius) var(--dice-hover-shadow-color);
+}
+
+.dice-scene .dice.disable:hover .face.face-inner,
+.dice-scene .dice.disable:hover .face-fill,
+.dice-scene .dice:hover .face.face-inner,
+.dice-scene .dice:hover .face-fill {
+	background-color: var(--dice-hover-inner-color);
+	box-shadow: none;
+}
+
+.dice-scene .face {
 	position: absolute;
-	left: var(--dice-face-inset);
-	top: var(--dice-face-inset);
-	width: var(--dice-face-size);
-	height: var(--dice-face-size);
-	box-sizing: border-box;
+	width: var(--dice-size);
+	height: var(--dice-size);
+	background: var(--dice-color);
+	box-shadow: inset 0 0 var(--dice-border-radius) var(--dice-shadow-color);
+	border-radius: var(--dice-border-radius);
+	opacity: 1;
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+.dice-scene .face.face-inner,
+.dice-scene .face-fill {
+	background-color: var(--dice-inner-color);
+	box-shadow: none;
+}
+
+.dice-scene .face-fill {
+	border-radius: 0;
+	transform: translateZ(0px);
+}
+
+.dice-scene .face-fill-x {
+	transform: rotateY(90deg);
+}
+
+.dice-scene .face-fill-z {
+	transform: rotateX(90deg);
+}
+
+.dice-scene .face-content {
+	position: absolute;
+	inset: 0;
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	grid-template-rows: repeat(3, 1fr);
-	padding: 15px;
-	gap: 0;
-	border-radius: 0;
-	background:
-		linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 38%),
-		linear-gradient(180deg, #fafafa 0%, var(--dice-face) 52%, #e4e4e4 100%);
-	border: 1px solid var(--dice-edge);
-	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
-	backface-visibility: hidden;
-	-webkit-backface-visibility: hidden;
-	transform-origin: center center;
+	padding: 15%;
+	box-sizing: border-box;
 }
 
-.pip {
+.dice-scene .pip {
 	width: var(--dice-pip);
 	height: var(--dice-pip);
 	border-radius: 50%;
-	background: radial-gradient(circle at 32% 28%, #4a4a4a 0%, var(--dice-pip-color) 58%, #000 100%);
+	background: radial-gradient(
+		circle at 32% 28%,
+		#4a4a4a 0%,
+		var(--dice-pip-color) 58%,
+		#000 100%
+	);
 	box-shadow: inset -1px -2px 2px rgba(255, 255, 255, 0.15);
 	justify-self: center;
 	align-self: center;
 }
 
-/* Pip positions — standard 3x3 die layout */
-.dice-face-front .pip:nth-child(1) {
+/* Pip layouts — standard die face patterns */
+.dice-scene .face-1 .pip:nth-child(1) {
 	grid-row: 2;
 	grid-column: 2;
 }
 
-.dice-face-top .pip:nth-child(1) {
+.dice-scene .face-2 .pip:nth-child(1) {
 	grid-row: 1;
 	grid-column: 1;
 }
-.dice-face-top .pip:nth-child(2) {
+.dice-scene .face-2 .pip:nth-child(2) {
 	grid-row: 3;
 	grid-column: 3;
 }
 
-.dice-face-right .pip:nth-child(1) {
+.dice-scene .face-3 .pip:nth-child(1) {
 	grid-row: 1;
 	grid-column: 1;
 }
-.dice-face-right .pip:nth-child(2) {
+.dice-scene .face-3 .pip:nth-child(2) {
 	grid-row: 2;
 	grid-column: 2;
 }
-.dice-face-right .pip:nth-child(3) {
+.dice-scene .face-3 .pip:nth-child(3) {
 	grid-row: 3;
 	grid-column: 3;
 }
 
-.dice-face-left .pip:nth-child(1) {
+.dice-scene .face-4 .pip:nth-child(1) {
 	grid-row: 1;
 	grid-column: 1;
 }
-.dice-face-left .pip:nth-child(2) {
+.dice-scene .face-4 .pip:nth-child(2) {
 	grid-row: 1;
 	grid-column: 3;
 }
-.dice-face-left .pip:nth-child(3) {
+.dice-scene .face-4 .pip:nth-child(3) {
 	grid-row: 3;
 	grid-column: 1;
 }
-.dice-face-left .pip:nth-child(4) {
+.dice-scene .face-4 .pip:nth-child(4) {
 	grid-row: 3;
 	grid-column: 3;
 }
 
-.dice-face-bottom .pip:nth-child(1) {
+.dice-scene .face-5 .pip:nth-child(1) {
 	grid-row: 1;
 	grid-column: 1;
 }
-.dice-face-bottom .pip:nth-child(2) {
+.dice-scene .face-5 .pip:nth-child(2) {
 	grid-row: 1;
 	grid-column: 3;
 }
-.dice-face-bottom .pip:nth-child(3) {
+.dice-scene .face-5 .pip:nth-child(3) {
 	grid-row: 2;
 	grid-column: 2;
 }
-.dice-face-bottom .pip:nth-child(4) {
+.dice-scene .face-5 .pip:nth-child(4) {
 	grid-row: 3;
 	grid-column: 1;
 }
-.dice-face-bottom .pip:nth-child(5) {
-	grid-row: 3;
-	grid-column: 3;
-}
-
-.dice-face-back .pip:nth-child(1) {
-	grid-row: 1;
-	grid-column: 1;
-}
-.dice-face-back .pip:nth-child(2) {
-	grid-row: 1;
-	grid-column: 3;
-}
-.dice-face-back .pip:nth-child(3) {
-	grid-row: 2;
-	grid-column: 1;
-}
-.dice-face-back .pip:nth-child(4) {
-	grid-row: 2;
-	grid-column: 3;
-}
-.dice-face-back .pip:nth-child(5) {
-	grid-row: 3;
-	grid-column: 1;
-}
-.dice-face-back .pip:nth-child(6) {
+.dice-scene .face-5 .pip:nth-child(5) {
 	grid-row: 3;
 	grid-column: 3;
 }
 
-/* Cube face transforms */
-.dice-face-front {
-	transform: rotateY(0deg) translateZ(var(--dice-half));
+.dice-scene .face-6 .pip:nth-child(1) {
+	grid-row: 1;
+	grid-column: 1;
 }
-.dice-face-back {
-	transform: rotateY(180deg) translateZ(var(--dice-half));
+.dice-scene .face-6 .pip:nth-child(2) {
+	grid-row: 1;
+	grid-column: 3;
 }
-.dice-face-top {
-	transform: rotateX(90deg) translateZ(var(--dice-half));
+.dice-scene .face-6 .pip:nth-child(3) {
+	grid-row: 2;
+	grid-column: 1;
 }
-.dice-face-bottom {
+.dice-scene .face-6 .pip:nth-child(4) {
+	grid-row: 2;
+	grid-column: 3;
+}
+.dice-scene .face-6 .pip:nth-child(5) {
+	grid-row: 3;
+	grid-column: 1;
+}
+.dice-scene .face-6 .pip:nth-child(6) {
+	grid-row: 3;
+	grid-column: 3;
+}
+
+/* Face layout at rest (ThomasGRBT):
+     6
+   5 3 2 4
+     1 */
+.dice-scene .face-1 {
 	transform: rotateX(-90deg) translateZ(var(--dice-half));
 }
-.dice-face-right {
+.dice-scene .face-2 {
 	transform: rotateY(90deg) translateZ(var(--dice-half));
 }
-.dice-face-left {
+.dice-scene .face-3 {
+	transform: rotateY(0deg) translateZ(var(--dice-half));
+}
+.dice-scene .face-4 {
+	transform: rotateY(180deg) translateZ(var(--dice-half));
+}
+.dice-scene .face-5 {
 	transform: rotateY(-90deg) translateZ(var(--dice-half));
+}
+.dice-scene .face-6 {
+	transform: rotateX(90deg) translateZ(var(--dice-half));
+}
+
+.dice-scene .face-inner-1 {
+	transform: rotateX(-90deg) translateZ(var(--dice-half-small));
+}
+.dice-scene .face-inner-2 {
+	transform: rotateY(90deg) translateZ(var(--dice-half-small));
+}
+.dice-scene .face-inner-3 {
+	transform: rotateY(0deg) translateZ(var(--dice-half-small));
+}
+.dice-scene .face-inner-4 {
+	transform: rotateY(180deg) translateZ(var(--dice-half-small));
+}
+.dice-scene .face-inner-5 {
+	transform: rotateY(-90deg) translateZ(var(--dice-half-small));
+}
+.dice-scene .face-inner-6 {
+	transform: rotateX(90deg) translateZ(var(--dice-half-small));
 }
 
 /* ==============================

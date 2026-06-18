@@ -14,33 +14,9 @@ const toggleCombatLogBtn = document.getElementById('toggleCombatLogBtn');
 
 
 
-const IDLE_TILT = { x: -18, y: 22 };
-
-
-
-const FACE_OFFSET = {
-
-	1: { x: 0, y: 0 },
-
-	2: { x: -90, y: 0 },
-
-	3: { x: 0, y: -90 },
-
-	4: { x: 0, y: 90 },
-
-	5: { x: 90, y: 0 },
-
-	6: { x: 0, y: 180 },
-
-};
-
-
-
-const MIN_SPIN_DEG = 720;
-
 const ROLL_PAUSE_MS = 400;
 
-const ROLL_DURATION_MS = 1000;
+const ROLL_DURATION_MS = DiceRollAnimator.ROLL_DURATION_MS;
 
 const ENEMY_TURN_COOLDOWN_MS = 1000;
 const LOOT_DROP_STAGGER_MS = 100;
@@ -54,23 +30,8 @@ const LOOT_ITEM_IMG_BASE =
 let isRolling = false;
 let isCombatBusy = false;
 
-let currentRotation = { ...IDLE_TILT };
-
-
-
-function getFaceRotation(face) {
-
-	const offset = FACE_OFFSET[face] || FACE_OFFSET[1];
-
-	return {
-
-		x: IDLE_TILT.x + offset.x,
-
-		y: IDLE_TILT.y + offset.y,
-
-	};
-
-}
+let diceRollState = DiceRollAnimator.getInitialState();
+let currentRotation = DiceRollAnimator.getFaceRotation(1);
 
 
 
@@ -130,10 +91,19 @@ function clearMonsterLootDrops() {
 	if (layer) layer.innerHTML = '';
 }
 
+function getLootDropMotionScale() {
+	const battlefield = document.querySelector('.delve-battlefield');
+	if (!battlefield) return 1;
+
+	const scale = parseFloat(getComputedStyle(battlefield).getPropertyValue('--loot-drop-motion-scale'));
+	return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
 function spawnMonsterLootDrop(item, index, total) {
 	const layer = document.getElementById('monsterLootLayer');
 	if (!layer || !item?.id) return;
 
+	const motionScale = getLootDropMotionScale();
 	const rarityKey = normalizeRarityKey(item.rarity);
 	const drop = document.createElement('div');
 	drop.className = `monster-loot-drop monster-loot-drop--${rarityKey}`;
@@ -146,11 +116,11 @@ function spawnMonsterLootDrop(item, index, total) {
 	drop.appendChild(img);
 
 	const angle = Math.random() * Math.PI * 2;
-	const horizontalReach = 36 + Math.random() * 62;
-	const apexLift = -(52 + Math.random() * 38);
-	const indexSpread = (index - (total - 1) / 2) * Math.min(22, 200 / Math.max(total, 1));
-	const landX = Math.cos(angle) * horizontalReach + indexSpread + (Math.random() * 12 - 6);
-	const landY = 38 + Math.random() * 22;
+	const horizontalReach = (36 + Math.random() * 62) * motionScale;
+	const apexLift = -(52 + Math.random() * 38) * motionScale;
+	const indexSpread = (index - (total - 1) / 2) * Math.min(22 * motionScale, (200 * motionScale) / Math.max(total, 1));
+	const landX = Math.cos(angle) * horizontalReach + indexSpread + (Math.random() * 12 - 6) * motionScale;
+	const landY = (38 + Math.random() * 22) * motionScale;
 	const apexX = Math.cos(angle) * (horizontalReach * 0.48) + indexSpread * 0.35;
 	const apexY = apexLift;
 	const spin = Math.random() * 50 - 25;
@@ -244,62 +214,62 @@ function stripDuplicateRollDetails(summary) {
 	if (!summary) return summary;
 
 	return summary
-		.replace(/\s*— Duplicated \d+ (time|times)/gi, '')
+		.replace(/\s*— Duplicated \d+ (time|times)[^!]*(!)?/gi, '')
 		.replace(/\s*\(Dice rolls:[^)]*\)/gi, '')
 		.trim();
 }
 
-function logPlayerAttackOutcome(data, { monsterDead = false } = {}) {
+function isGenericTurnMessage(message) {
+	if (!message) return true;
+	return /^(keep going!?|continue!?|your turn\.?)$/i.test(message.trim());
+}
+
+function logPlayerAttackOutcome(data) {
 	const instance = getCombatInstance(data);
 	const raw = instance?.raw || data?.raw;
 	let rolledSummary = instance?.rolled || data?.rolled;
 
-	if (monsterDead && rolledSummary) {
-		rolledSummary = stripDuplicateRollDetails(rolledSummary);
-	}
-
 	if (rolledSummary) {
+		rolledSummary = stripDuplicateRollDetails(rolledSummary);
 		appendCombatLog(rolledSummary, raw?.isCrit ? 'crit' : 'roll');
 	}
 
 	const damageDealt = raw?.playerDamageToMonster;
-	if (damageDealt !== undefined && damageDealt !== null) {
-		const rolledDamage = raw?.rollResult;
-		if (rolledDamage !== undefined && rolledDamage !== damageDealt) {
-			appendCombatLog(
-				`Rolled ${rolledDamage} — ${damageDealt} damage applied after DR/regen.`,
-				'damage'
-			);
-		} else {
-			appendCombatLog(`You dealt ${damageDealt} damage to the monster.`, 'damage');
-		}
+	const rolledDamage = raw?.rollResult;
+	if (
+		damageDealt !== undefined &&
+		damageDealt !== null &&
+		rolledDamage !== undefined &&
+		rolledDamage !== damageDealt
+	) {
+		appendCombatLog(`${damageDealt} damage applied (${rolledDamage} before DR/regen).`, 'damage');
 	}
 }
 
 function logMonsterTurnOutcome(monsterTurn, monsterAttack) {
 	if (monsterAttack) {
 		appendCombatLog(monsterAttack, 'player-damage');
+		return;
 	}
 
 	if (!monsterTurn?.attacks?.length) return;
 
-	monsterTurn.attacks.forEach((attack, index) => {
-		if (attack.description) {
-			appendCombatLog(`Attack ${index + 1}: ${attack.description}`, 'player-damage');
-		}
-		if (attack.damageDealt) {
-			appendCombatLog(`You took ${attack.damageDealt} damage.`, 'player-damage');
-		}
-	});
+	const totalDamage = monsterTurn.totalDamage ?? monsterTurn.attacks.reduce(
+		(sum, attack) => sum + (attack.damageDealt ?? 0),
+		0
+	);
+
+	if (totalDamage > 0) {
+		appendCombatLog(`You took ${totalDamage} damage.`, 'player-damage');
+	}
 }
 
 function logTurnSummary(data) {
 	const instance = getCombatInstance(data);
-	const stats = instance?.stats || data?.stats;
 	const resultMsg = instance?.message || data?.message || '';
 	const rewards = instance?.rewards || data?.rewards;
 
-	if (resultMsg) {
+	if (resultMsg && !isGenericTurnMessage(resultMsg)) {
 		const lower = resultMsg.toLowerCase();
 		if (lower.includes('success')) {
 			appendCombatLog(resultMsg, 'success');
@@ -308,14 +278,6 @@ function logTurnSummary(data) {
 		} else {
 			appendCombatLog(resultMsg, 'info');
 		}
-	}
-
-	if (stats) {
-		appendCombatLog(
-			`You: ${stats.player_health}/${stats.player_max_health} HP · Monster: ${stats.health} HP · Attacks left: ${stats.attacks_remaining}/${stats.player_speed}`,
-			'info'
-		);
-
 	}
 
 	if (rewards?.type === 'loot_drop' && rewards.items?.length) {
@@ -416,112 +378,20 @@ function delay(ms) {
 
 
 
-function normalizeAngle(deg) {
-
-	return ((deg % 360) + 360) % 360;
-
-}
-
-
-
-function computeEndAngle(current, target, minSpin) {
-
-	const targetNorm = normalizeAngle(target);
-
-	let end = current + minSpin;
-
-	const remainder = (targetNorm - normalizeAngle(end) + 360) % 360;
-
-	end += remainder;
-
-
-
-	if (end < current + minSpin) {
-
-		end += 360;
-
-	}
-
-
-
-	return end;
-
-}
-
-
-
 function setCubeRotation(x, y, animate = false) {
-
 	currentRotation = { x, y };
-
-	diceCube.classList.toggle('is-rolling', animate);
-
-	diceCube.style.transform = `rotateX(${x}deg) rotateY(${y}deg)`;
-
+	DiceRollAnimator.applyRotation(diceCube, x, y, animate);
 }
-
-
 
 function showFace(face, animate = false) {
-
-	const target = getFaceRotation(face);
-
+	const target = DiceRollAnimator.getFaceRotation(face);
 	setCubeRotation(target.x, target.y, animate);
-
 }
 
-
-
-function rollSingleDie(face) {
-
-	const target = getFaceRotation(face);
-
-	const endX = computeEndAngle(currentRotation.x, target.x, MIN_SPIN_DEG);
-
-	const endY = computeEndAngle(currentRotation.y, target.y, MIN_SPIN_DEG);
-
-
-
-	return new Promise((resolve) => {
-
-		const onEnd = (event) => {
-
-			if (event.propertyName !== 'transform') return;
-
-			diceCube.removeEventListener('transitionend', onEnd);
-
-			diceCube.classList.remove('is-rolling');
-
-			currentRotation = { x: endX, y: endY };
-
-			resolve();
-
-		};
-
-
-
-		diceCube.addEventListener('transitionend', onEnd);
-
-		setCubeRotation(endX, endY, true);
-
-
-
-		setTimeout(() => {
-
-			diceCube.removeEventListener('transitionend', onEnd);
-
-			diceCube.classList.remove('is-rolling');
-
-			currentRotation = { x: endX, y: endY };
-
-			diceCube.style.transform = `rotateX(${endX}deg) rotateY(${endY}deg)`;
-
-			resolve();
-
-		}, ROLL_DURATION_MS + 150);
-
-	});
-
+async function rollSingleDie(face) {
+	const result = await DiceRollAnimator.rollToFace(diceCube, face, diceRollState);
+	diceRollState = result.state;
+	currentRotation = { x: result.x, y: result.y };
 }
 
 
@@ -655,7 +525,6 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 	try {
 
 		let runningMonsterHealth = startingMonsterHealth;
-		let loggedCritEffect = false;
 
 		for (let i = 0; i < rolls.length; i++) {
 
@@ -686,16 +555,14 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 
 				if (attackEffects && canShowHitEffects) {
 					if (isRollCrit) {
-						showCritEffect({ log: !loggedCritEffect });
-						loggedCritEffect = true;
+						showCritEffect();
 					}
 					if (isDuplicateRoll) {
 						showDuplicateEffect();
 					}
 				}
 			} else if (attackEffects && isRollCrit) {
-				showCritEffect({ log: !loggedCritEffect });
-				loggedCritEffect = true;
+				showCritEffect();
 				if (isDuplicateRoll) {
 					showDuplicateEffect();
 				}
@@ -809,9 +676,7 @@ function handleDelveActionResponse(status, data) {
 				updatePlayerUI(playerPhaseStats);
 			}
 
-			const monsterDead = (stats?.health ?? 1) <= 0;
-
-			logPlayerAttackOutcome(data, { monsterDead });
+			logPlayerAttackOutcome(data);
 
 			if (monsterTurn?.attacks?.length) {
 				setTurnIndicator("Monster's turn incoming...", 'waiting');
@@ -1011,7 +876,7 @@ function setNextDelveButtonText(outcome) {
 
 
 
-function showCritEffect({ log = true } = {}) {
+function showCritEffect() {
 	const container = document.querySelector('.dice-dock');
 	if (!container) return;
 
@@ -1019,7 +884,6 @@ function showCritEffect({ log = true } = {}) {
 	crit.className = 'crit-float';
 	crit.textContent = 'CRITICAL! ☠︎︎';
 	container.appendChild(crit);
-	if (log) appendCombatLog('Critical hit!', 'crit');
 	setTimeout(() => crit.remove(), 2500);
 }
 
@@ -1031,7 +895,6 @@ function showDuplicateEffect() {
 	duplicate.className = 'dup-float';
 	duplicate.textContent = 'DUPLICATE! ✵';
 	container.appendChild(duplicate);
-	appendCombatLog('Duplicate roll triggered!', 'crit');
 	setTimeout(() => duplicate.remove(), 2500);
 }
 

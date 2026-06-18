@@ -225,14 +225,10 @@ function loadDelveInfo() {
 			if (currentHealth > 0) {
 				sessionStorage.setItem(getMonsterStartHealthKey(String(delveId)), String(currentHealth));
 			}
-			appendCombatLog(`${monsterName} (Lv. ${delve.level || '?'}) appears!`, 'encounter');
 			appendCombatLog(
-				`Your SPD ${delve.player_speed || '?'} · Monster SPD ${delve.monster_speed || '?'} · Your DR ${delve.player_damage_reduction || 0}%`,
-				'info'
+				`${monsterName} (Lv. ${delve.level || '?'}) appears! · Your SPD ${delve.player_speed || '?'} vs ${delve.monster_speed || '?'} · DR ${delve.player_damage_reduction || 0}%${delve.item_quantity > 0 ? ` · ${delve.item_quantity} loot drop(s)` : ''}`,
+				'encounter'
 			);
-			if (delve.item_quantity > 0) {
-				appendCombatLog(`Loot: ${delve.item_quantity} drop(s) — any rarity possible`, 'loot');
-			}
 			sessionStorage.setItem('delveLogInitialized', String(delveId));
 		}
 

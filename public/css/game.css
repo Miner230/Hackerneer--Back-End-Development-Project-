@@ -141,8 +141,8 @@ body.delve.delve-fullscreen .delve-arena {
 }
 
 .monster-hp-stack {
-	width: min(400px, 100%);
-	max-width: 400px;
+	width: var(--combat-hud-width);
+	max-width: 100%;
 	margin-inline: auto;
 	min-width: 0;
 }
@@ -152,16 +152,16 @@ body.delve.delve-fullscreen .delve-arena {
 }
 
 .monster-unit .combat-unit-hud {
-	width: min(400px, 100%);
-	max-width: 400px;
+	width: var(--combat-hud-width);
+	max-width: 100%;
 	margin-inline: auto;
 }
 
 .mod-tag {
 	display: inline-block;
-	padding: 0.2rem 0.45rem;
+	padding: calc(var(--combat-meta-padding-y) + 0.1rem) var(--combat-meta-padding-x);
 	border-radius: 6px;
-	font-size: clamp(0.62rem, 2cqw, 0.78rem);
+	font-size: var(--combat-mod-tag-font-size);
 	font-weight: 600;
 	line-height: 1.25;
 	color: #f0e4ff;
@@ -175,9 +175,9 @@ body.delve.delve-fullscreen .delve-arena {
 
 .delve-meta-badge {
 	display: inline-block;
-	padding: 0.1rem 0.45rem;
+	padding: var(--combat-meta-padding-y) var(--combat-meta-padding-x);
 	border-radius: 999px;
-	font-size: 0.65rem;
+	font-size: var(--combat-meta-font-size);
 	background: rgba(255, 255, 255, 0.1);
 	border: 1px solid rgba(255, 255, 255, 0.16);
 	color: #f5f5f5;
@@ -194,7 +194,7 @@ body.delve.delve-fullscreen .delve-arena {
 .combat-unit-health.monster-health-bar {
 	max-width: 100%;
 	width: 100%;
-	height: 34px;
+	height: var(--combat-health-bar-height);
 	border: 2px solid #aaa;
 	border-radius: 8px;
 	margin-bottom: 0;
@@ -206,7 +206,7 @@ body.delve.delve-fullscreen .delve-arena {
 	left: 50%;
 	top: 50%;
 	transform: translate(-50%, -50%);
-	font-size: 14px;
+	font-size: var(--combat-health-label-size);
 	color: #fff;
 	font-weight: bold;
 	text-shadow: 0 0 3px black;
@@ -217,6 +217,10 @@ body.delve.delve-fullscreen .delve-arena {
 	background: #f44336;
 	background-size: 300%;
 	transition: width 0.38s ease-out, opacity 0.25s ease;
+}
+
+.player-unit .combat-unit-health .health-fill {
+	background: #43a047;
 }
 
 /* ==============================
@@ -231,6 +235,27 @@ body.delve.delve-fullscreen .delve-arena {
 	container-name: battlefield;
 	--dice-size: min(20cqmin, 108px);
 	--dice-scene-size: calc(var(--dice-size) * 1.7);
+	--combat-sprite-size: min(400px, 100%);
+	--combat-hud-width: min(400px, 100%);
+	--combat-name-min: 0.82rem;
+	--combat-name-fluid: 2.8cqw;
+	--combat-name-max: 1.15rem;
+	--combat-meta-font-size: 0.65rem;
+	--combat-meta-padding-y: 0.1rem;
+	--combat-meta-padding-x: 0.45rem;
+	--combat-meta-gap: 0.25rem;
+	--combat-hp-text-size: 0.62rem;
+	--combat-desc-font-size: 0.62rem;
+	--combat-desc-line-height: 1.2;
+	--combat-health-bar-height: 34px;
+	--combat-health-label-size: 14px;
+	--combat-mod-tag-font-size: clamp(0.62rem, 2cqw, 0.78rem);
+	--combat-header-gap: 0.45rem;
+	--combat-header-margin-bottom: 0.28rem;
+	--loot-drop-size-min: 26px;
+	--loot-drop-size-fluid: 7.5cqmin;
+	--loot-drop-size-max: 40px;
+	--loot-drop-motion-scale: 1;
 	background-image: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/bgdelve.png');
 	background-size: cover;
 	background-position: center;
@@ -275,13 +300,13 @@ body.delve.delve-fullscreen .delve-arena {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 0.45rem;
-	margin-bottom: 0.28rem;
+	gap: var(--combat-header-gap);
+	margin-bottom: var(--combat-header-margin-bottom);
 }
 
 .combat-unit-name {
 	margin: 0;
-	font-size: clamp(0.82rem, 2.8cqw, 1.15rem);
+	font-size: clamp(var(--combat-name-min), var(--combat-name-fluid), var(--combat-name-max));
 	line-height: 1.1;
 	flex: 1;
 	min-width: 0;
@@ -301,7 +326,7 @@ body.delve.delve-fullscreen .delve-arena {
 
 .combat-unit-meta {
 	display: flex;
-	gap: 0.25rem;
+	gap: var(--combat-meta-gap);
 	flex-shrink: 0;
 	flex-wrap: wrap;
 	justify-content: flex-end;
@@ -313,29 +338,31 @@ body.delve.delve-fullscreen .delve-arena {
 
 .player-unit .combat-unit-hud > .monster-health-bar,
 .player-unit .combat-unit-hud > .combat-unit-hp-text {
-	width: min(400px, 100%);
-	max-width: 400px;
+	width: var(--combat-hud-width);
+	max-width: 100%;
 	margin-inline: auto;
 }
 
 .combat-unit-hp-text {
 	margin: 0.2rem 0 0;
-	font-size: 0.62rem;
+	font-size: var(--combat-hp-text-size);
 	color: rgba(255, 255, 255, 0.72);
 	text-align: center;
 }
 
 .player-unit .combat-unit-hud {
-	width: min(400px, 100%);
-	max-width: 400px;
+	width: var(--combat-hud-width);
+	max-width: 100%;
 	margin-inline: auto;
 }
 
 .combat-unit-desc {
 	margin: 0.2rem 0 0;
-	width: 100%;
-	font-size: 0.62rem;
-	line-height: 1.2;
+	width: var(--combat-hud-width);
+	max-width: 100%;
+	margin-inline: auto;
+	font-size: var(--combat-desc-font-size);
+	line-height: var(--combat-desc-line-height);
 	color: rgba(255, 255, 255, 0.68);
 	text-align: center;
 	display: -webkit-box;
@@ -368,8 +395,8 @@ body.delve.delve-fullscreen .delve-arena {
 
 .monster-loot-drop {
 	position: absolute;
-	width: clamp(26px, 7.5cqmin, 40px);
-	height: clamp(26px, 7.5cqmin, 40px);
+	width: clamp(var(--loot-drop-size-min), var(--loot-drop-size-fluid), var(--loot-drop-size-max));
+	height: clamp(var(--loot-drop-size-min), var(--loot-drop-size-fluid), var(--loot-drop-size-max));
 	transform: translate(-50%, -50%);
 	will-change: transform, opacity;
 	animation: monsterLootArc 0.52s cubic-bezier(0.33, 0.01, 0.18, 1) forwards;
@@ -380,7 +407,10 @@ body.delve.delve-fullscreen .delve-arena {
 	width: 100%;
 	height: 100%;
 	object-fit: contain;
-	filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
+	filter: drop-shadow(
+		0 calc(4px * var(--loot-drop-motion-scale, 1)) calc(10px * var(--loot-drop-motion-scale, 1))
+			rgba(0, 0, 0, 0.75)
+	);
 }
 
 .monster-loot-drop--common {
@@ -433,10 +463,10 @@ body.delve.delve-fullscreen .delve-arena {
 .combat-sprite,
 .monster-img {
 	display: block;
-	width: min(400px, 100%);
-	height: min(400px, 100%);
-	max-width: 400px;
-	max-height: 400px;
+	width: var(--combat-sprite-size);
+	height: var(--combat-sprite-size);
+	max-width: 100%;
+	max-height: 100%;
 	margin: 0;
 	object-fit: contain;
 	object-position: center bottom;
@@ -472,15 +502,33 @@ body.delve.delve-fullscreen .delve-arena {
 	.player-img,
 	.combat-sprite,
 	.monster-img {
-		width: min(400px, 90vw);
-		height: min(400px, 50vh);
-		max-width: 400px;
-		max-height: 400px;
+		width: var(--combat-sprite-size, min(400px, 90vw));
+		height: var(--combat-sprite-size, min(400px, 50vh));
+		max-width: 100%;
+		max-height: 100%;
 	}
 
 	.delve-battlefield {
 		--dice-size: min(20vw, 108px);
 		--dice-scene-size: calc(var(--dice-size) * 1.7);
+	}
+
+	@media (min-width: 901px) {
+		.delve-battlefield {
+			--combat-sprite-size: min(52vh, 38vw, 520px);
+		}
+	}
+
+	@media (min-width: 1200px) {
+		.delve-battlefield {
+			--combat-sprite-size: min(62vh, 36vw, 640px);
+		}
+	}
+
+	@media (min-width: 1600px) {
+		.delve-battlefield {
+			--combat-sprite-size: min(70vh, 34vw, 760px);
+		}
 	}
 }
 
@@ -625,9 +673,17 @@ body.delve.delve-fullscreen .delve-arena {
 	top: 0;
 	left: 0;
 	bottom: 0;
-	width: min(300px, 30vw);
+	width: var(--combat-log-width, min(300px, 30vw));
 	z-index: 5;
 	pointer-events: none;
+	--combat-log-peek-duration: 5.2s;
+	--combat-log-width: min(300px, 30vw);
+	--combat-log-font-size: 0.95rem;
+	--combat-log-line-height: 1.5;
+	--combat-log-entry-padding: 0.4rem 0.55rem;
+	--combat-log-gap: 0.5rem;
+	--combat-log-panel-padding: 0.65rem 0.85rem 0.75rem;
+	--combat-log-header-size: 0.78rem;
 }
 
 .delve-combat-sidebar-panel {
@@ -686,7 +742,7 @@ body.delve.delve-fullscreen .delve-arena {
 .delve-combat-sidebar-header {
 	flex-shrink: 0;
 	padding: 0.55rem 0.85rem 0.4rem;
-	font-size: 0.78rem;
+	font-size: var(--combat-log-header-size);
 	font-weight: 800;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
@@ -701,8 +757,8 @@ body.delve.delve-fullscreen .delve-arena {
 	overflow-x: hidden;
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
-	padding: 0.65rem 0.85rem 0.75rem;
+	gap: var(--combat-log-gap);
+	padding: var(--combat-log-panel-padding);
 	background: transparent;
 	border: none;
 	border-radius: 0;
@@ -740,9 +796,9 @@ body.delve.delve-fullscreen .delve-arena {
 
 .combat-log-entry {
 	flex-shrink: 0;
-	font-size: 0.95rem;
-	line-height: 1.5;
-	padding: 0.4rem 0.55rem;
+	font-size: var(--combat-log-font-size);
+	line-height: var(--combat-log-line-height);
+	padding: var(--combat-log-entry-padding);
 	border-radius: 6px;
 	word-break: break-word;
 	background: transparent;
@@ -757,7 +813,7 @@ body.delve.delve-fullscreen .delve-arena {
 
 .delve-combat-sidebar.is-collapsed .combat-log-entry--peek {
 	opacity: 1;
-	animation: combatLogPeekReveal 2s ease-out forwards;
+	animation: combatLogPeekReveal var(--combat-log-peek-duration, 5.2s) ease-out forwards;
 }
 
 .delve-combat-sidebar.is-open .combat-log-entry {
@@ -771,11 +827,11 @@ body.delve.delve-fullscreen .delve-arena {
 		clip-path: inset(0 100% 0 0);
 		opacity: 1;
 	}
-	18% {
+	10% {
 		clip-path: inset(0 0 0 0);
 		opacity: 1;
 	}
-	72% {
+	82% {
 		clip-path: inset(0 0 0 0);
 		opacity: 1;
 	}
@@ -1223,17 +1279,152 @@ body.delve.delve-fullscreen .delve-arena {
 ============================== */
 
 /* ==============================
-   Responsive — larger screens
+   Responsive — larger screens (desktop / wide viewports only)
 ============================== */
-@media (min-width: 992px) {
+@media (min-width: 901px) {
 	.delve-battlefield {
+		--combat-sprite-size: min(58cqh, 38cqw, 520px);
+		--combat-hud-width: min(var(--combat-sprite-size), 100%);
 		--dice-size: min(18cqmin, 108px);
 		--dice-scene-size: calc(var(--dice-size) * 1.7);
+		--combat-name-max: 1.35rem;
+		--combat-name-fluid: 2.4cqw;
+		--combat-meta-font-size: 0.78rem;
+		--combat-meta-padding-y: 0.14rem;
+		--combat-meta-padding-x: 0.55rem;
+		--combat-meta-gap: 0.32rem;
+		--combat-hp-text-size: 0.74rem;
+		--combat-desc-font-size: 0.74rem;
+		--combat-desc-line-height: 1.28;
+		--combat-health-bar-height: 40px;
+		--combat-health-label-size: 16px;
+		--combat-mod-tag-font-size: clamp(0.72rem, 1.8cqw, 0.92rem);
+		--combat-header-gap: 0.55rem;
+		--combat-header-margin-bottom: 0.34rem;
+		--loot-drop-size-min: 32px;
+		--loot-drop-size-fluid: 8cqmin;
+		--loot-drop-size-max: 52px;
+		--loot-drop-motion-scale: 1.28;
+	}
+
+	.delve-combat-sidebar {
+		--combat-log-width: min(340px, 28vw);
+		--combat-log-font-size: 1.05rem;
+		--combat-log-line-height: 1.48;
+		--combat-log-entry-padding: 0.45rem 0.62rem;
+		--combat-log-gap: 0.55rem;
+		--combat-log-panel-padding: 0.72rem 0.95rem 0.82rem;
+		--combat-log-header-size: 0.86rem;
+	}
+
+	.delve-combat-log-toggle {
+		font-size: 0.9rem;
+		padding: 0.48rem 1.2rem;
 	}
 
 	.battlefield-layout {
-		gap: 0.5rem;
-		padding: 0.45rem 0.55rem 0.55rem;
+		gap: 0.65rem;
+		padding: 0.45rem 0.75rem 0.55rem;
+	}
+
+	.player-unit .combat-display {
+		justify-content: flex-end;
+		padding-inline-end: 0.35rem;
+	}
+
+	.monster-unit .combat-display {
+		justify-content: flex-start;
+		padding-inline-start: 0.35rem;
+	}
+}
+
+@media (min-width: 1200px) {
+	.delve-battlefield {
+		--combat-sprite-size: min(68cqh, 36cqw, 640px);
+		--combat-hud-width: min(var(--combat-sprite-size), 100%);
+		--combat-name-max: 1.55rem;
+		--combat-name-fluid: 2.1cqw;
+		--combat-meta-font-size: 0.88rem;
+		--combat-meta-padding-y: 0.16rem;
+		--combat-meta-padding-x: 0.62rem;
+		--combat-meta-gap: 0.38rem;
+		--combat-hp-text-size: 0.84rem;
+		--combat-desc-font-size: 0.86rem;
+		--combat-desc-line-height: 1.32;
+		--combat-health-bar-height: 46px;
+		--combat-health-label-size: 18px;
+		--combat-mod-tag-font-size: clamp(0.8rem, 1.6cqw, 1.02rem);
+		--combat-header-gap: 0.62rem;
+		--combat-header-margin-bottom: 0.38rem;
+		--loot-drop-size-min: 38px;
+		--loot-drop-size-fluid: 8.5cqmin;
+		--loot-drop-size-max: 64px;
+		--loot-drop-motion-scale: 1.5;
+	}
+
+	.delve-combat-sidebar {
+		--combat-log-width: min(400px, 26vw);
+		--combat-log-font-size: 1.18rem;
+		--combat-log-line-height: 1.46;
+		--combat-log-entry-padding: 0.52rem 0.72rem;
+		--combat-log-gap: 0.62rem;
+		--combat-log-panel-padding: 0.82rem 1.05rem 0.92rem;
+		--combat-log-header-size: 0.94rem;
+	}
+
+	.delve-combat-log-toggle {
+		font-size: 0.98rem;
+		padding: 0.52rem 1.32rem;
+	}
+
+	.battlefield-layout {
+		gap: 0.85rem;
+		padding: 0.5rem 1rem 0.6rem;
+	}
+}
+
+@media (min-width: 1600px) {
+	.delve-battlefield {
+		--combat-sprite-size: min(74cqh, 34cqw, 760px);
+		--combat-hud-width: min(var(--combat-sprite-size), 100%);
+		--combat-name-max: 1.75rem;
+		--combat-name-fluid: 1.9cqw;
+		--combat-meta-font-size: 1rem;
+		--combat-meta-padding-y: 0.18rem;
+		--combat-meta-padding-x: 0.7rem;
+		--combat-meta-gap: 0.42rem;
+		--combat-hp-text-size: 0.94rem;
+		--combat-desc-font-size: 0.98rem;
+		--combat-desc-line-height: 1.36;
+		--combat-health-bar-height: 52px;
+		--combat-health-label-size: 20px;
+		--combat-mod-tag-font-size: clamp(0.88rem, 1.4cqw, 1.12rem);
+		--combat-header-gap: 0.7rem;
+		--combat-header-margin-bottom: 0.42rem;
+		--loot-drop-size-min: 44px;
+		--loot-drop-size-fluid: 9cqmin;
+		--loot-drop-size-max: 76px;
+		--loot-drop-motion-scale: 1.72;
+	}
+
+	.delve-combat-sidebar {
+		--combat-log-width: min(460px, 24vw);
+		--combat-log-font-size: 1.32rem;
+		--combat-log-line-height: 1.44;
+		--combat-log-entry-padding: 0.58rem 0.82rem;
+		--combat-log-gap: 0.7rem;
+		--combat-log-panel-padding: 0.92rem 1.18rem 1.02rem;
+		--combat-log-header-size: 1.02rem;
+	}
+
+	.delve-combat-log-toggle {
+		font-size: 1.08rem;
+		padding: 0.56rem 1.45rem;
+	}
+
+	.battlefield-layout {
+		gap: 1rem;
+		padding: 0.55rem 1.25rem 0.65rem;
 	}
 }
 

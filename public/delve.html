@@ -69,40 +69,55 @@
 									<div class="dice-container">
 										<button type="button" class="dice-roll-btn roll" title="Roll the dice" aria-label="Roll the dice">
 											<div class="dice-scene">
-												<div class="dice-cube" id="diceCube">
-													<div class="dice-core" aria-hidden="true"></div>
-													<div class="dice-face dice-face-front" data-value="1">
-														<span class="pip"></span>
+												<div class="dice" id="diceCube">
+													<div class="face face-inner face-inner-1"></div>
+													<div class="face face-1">
+														<div class="face-content"><span class="pip"></span></div>
 													</div>
-													<div class="dice-face dice-face-top" data-value="2">
-														<span class="pip"></span>
-														<span class="pip"></span>
+													<div class="face face-inner face-inner-2"></div>
+													<div class="face face-2">
+														<div class="face-content">
+															<span class="pip"></span>
+															<span class="pip"></span>
+														</div>
 													</div>
-													<div class="dice-face dice-face-right" data-value="3">
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
+													<div class="face face-inner face-inner-3"></div>
+													<div class="face face-3">
+														<div class="face-content">
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+														</div>
 													</div>
-													<div class="dice-face dice-face-left" data-value="4">
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
+													<div class="face face-inner face-inner-4"></div>
+													<div class="face face-4">
+														<div class="face-content">
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+														</div>
 													</div>
-													<div class="dice-face dice-face-bottom" data-value="5">
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
+													<div class="face face-inner face-inner-5"></div>
+													<div class="face face-5">
+														<div class="face-content">
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+														</div>
 													</div>
-													<div class="dice-face dice-face-back" data-value="6">
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
-														<span class="pip"></span>
+													<div class="face face-inner face-inner-6"></div>
+													<div class="face face-6">
+														<div class="face-content">
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+															<span class="pip"></span>
+														</div>
 													</div>
 												</div>
 											</div>
@@ -192,6 +207,7 @@
 		<script src="js/queryCmds.js"></script>
 		<script src="js/navbar.js"></script>
 		<script src="js/mainUtils.js"></script>
+		<script src="js/delve/diceRollAnimator.js"></script>
 		<script src="js/delve/rollDice.js"></script>
 		<script src="js/delve/delveCreator.js"></script>
 		<script src="js/notification.js"></script>
