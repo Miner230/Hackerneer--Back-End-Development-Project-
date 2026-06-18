@@ -1,15 +1,203 @@
 // monsterConfig.js
-// handler for displaying delve results in a readable format
-// checks if a crit was rolled, if a duplication occurred, and displays it along with the updated monster stats
+const { diceRoll } = require('./diceCalculator.js');
+
+// Player combat stats scale with user level
+function computePlayerCombatStats(user) {
+	const level = Math.max(1, Number(user?.level || 1));
+	const maxHealth = Math.floor(100 + level * 15);
+	const damageReduction = Math.min(35, Math.floor(level / 4));
+	const playerSpeed = 1;
+
+	return {
+		player_max_health: maxHealth,
+		player_health: maxHealth,
+		player_damage_reduction: damageReduction,
+		player_speed: playerSpeed,
+	};
+}
+
+function computeModifierBonuses(selectedModifiers = []) {
+	const bonuses = {
+		speedMultiplier: 1,
+		critChanceBonus: 0,
+		critPowerBonus: 0,
+		duplicationChanceBonus: 0,
+		duplicationNumberBonus: 0,
+		levelBonus: 0,
+	};
+
+	selectedModifiers.forEach((mod) => {
+		switch (mod.name) {
+			case 'Speedy':
+				bonuses.speedMultiplier *= 1.5;
+				break;
+			case 'Bloodthirsty':
+				bonuses.critChanceBonus += 12;
+				break;
+			case 'Deadly':
+				bonuses.critPowerBonus += 35;
+				break;
+			case 'Echoing':
+				bonuses.duplicationChanceBonus += 10;
+				break;
+			case 'Prolific':
+				bonuses.duplicationNumberBonus += 1;
+				break;
+			case 'Savage':
+				bonuses.levelBonus += 3;
+				break;
+			default:
+				break;
+		}
+	});
+
+	return bonuses;
+}
+
+function computeMonsterSpeed(monsterLevel, selectedModifiers = []) {
+	let speed = Math.max(1, Math.min(4, 1 + Math.floor(monsterLevel / 100)));
+	const { speedMultiplier } = computeModifierBonuses(selectedModifiers);
+	speed = Math.ceil(speed * speedMultiplier);
+	return Math.min(5, speed);
+}
+
+function buildMonsterDiceProfile(monsterLevel, selectedModifiers = []) {
+	const bonuses = computeModifierBonuses(selectedModifiers);
+	const effectiveLevel = monsterLevel + bonuses.levelBonus;
+
+	return {
+		side_1: 10,
+		side_2: 10,
+		side_3: 10,
+		side_4: 10,
+		side_5: 10,
+		side_6: 10,
+		level: effectiveLevel,
+		crit_chance: Math.min(50, 8 + Math.floor(monsterLevel / 25) + bonuses.critChanceBonus),
+		crit_power: Math.min(400, 175 + bonuses.critPowerBonus),
+		duplication_chance: Math.min(60, 8 + Math.floor(monsterLevel / 50) + bonuses.duplicationChanceBonus),
+		duplication_number: Math.min(5, 1 + Math.floor(monsterLevel / 200) + bonuses.duplicationNumberBonus),
+	};
+}
+
+function applyDamageReduction(rawDamage, reductionPercent) {
+	if (!reductionPercent) return Math.max(1, rawDamage);
+	return Math.max(1, Math.floor((rawDamage * (100 - reductionPercent)) / 100));
+}
+
+function applyMonsterDamageFromPlayerRoll(rollResult, monsterDR, lifeRegen) {
+	if (monsterDR == 0) {
+		return rollResult - lifeRegen;
+	}
+	return Math.floor((rollResult * monsterDR) / 100) - lifeRegen;
+}
+
+function formatRollDescription(roll, actor = 'You') {
+	const { rollResult, rollValue, level_result_Modifier, isCrit, multiplier, duplicationCount, baseRolls } =
+		roll;
+	let description = '';
+
+	if (level_result_Modifier > 0 && isCrit) {
+		description = `Critical Hit! ${actor} rolled: ${rollResult} ((${rollValue} + ${level_result_Modifier}) × ${multiplier})`;
+	} else if (isCrit) {
+		description = `Critical Hit! ${actor} rolled: ${rollResult} (${rollValue} × ${multiplier})`;
+	} else if (level_result_Modifier > 0) {
+		description = `${actor} rolled: ${rollResult} (${rollValue} + ${level_result_Modifier} level bonus)`;
+	} else {
+		description = `${actor} rolled: ${rollResult}`;
+	}
+
+	if (duplicationCount > 0) {
+		description += ` — Duplicated ${duplicationCount} ${duplicationCount === 1 ? 'time' : 'times'}`;
+	}
+
+	if (baseRolls.length > 1) {
+		description += ` (Dice rolls: ${baseRolls.join(', ')})`;
+	}
+
+	return description;
+}
+
+function executeMonsterAttacks(monsterLevel, monsterSpeed, playerDR, selectedModifiers = []) {
+	const attacks = [];
+	let totalDamage = 0;
+	const profile = buildMonsterDiceProfile(monsterLevel, selectedModifiers);
+
+	for (let i = 0; i < monsterSpeed; i++) {
+		const rolled = diceRoll(profile);
+		if (!rolled) continue;
+
+		const damageDealt = applyDamageReduction(rolled.rollResult, playerDR);
+		totalDamage += damageDealt;
+		attacks.push({
+			...rolled,
+			damageDealt,
+			description: formatRollDescription(rolled, 'Monster'),
+		});
+	}
+
+	return { attacks, totalDamage };
+}
+
+function resolveCombatAction(instance, playerRoll) {
+	if ((instance.active_turn || 'player') !== 'player') {
+		throw new Error('It is not your turn to attack');
+	}
+
+	if ((instance.attacks_remaining ?? 0) <= 0) {
+		throw new Error('No attacks remaining this turn');
+	}
+
+	let health = instance.health;
+	let playerHealth = instance.player_health ?? instance.player_max_health ?? 100;
+	let attacksRemaining = instance.attacks_remaining ?? instance.player_speed ?? 1;
+	let activeTurn = 'player';
+	let status = 'in progress';
+	let monsterTurn = null;
+
+	const playerDamageToMonster = applyMonsterDamageFromPlayerRoll(
+		playerRoll.rollResult,
+		instance.damage_reduction,
+		instance.life_regen
+	);
+
+	health = Math.max(0, health - playerDamageToMonster);
+	attacksRemaining = Math.max(0, attacksRemaining - 1);
+
+	if (health <= 0) {
+		status = 'completed';
+	} else if (attacksRemaining <= 0) {
+		monsterTurn = executeMonsterAttacks(
+			instance.level,
+			instance.monster_speed ?? 2,
+			instance.player_damage_reduction ?? 0,
+			instance.modifiers || []
+		);
+		playerHealth = Math.max(0, playerHealth - monsterTurn.totalDamage);
+		activeTurn = 'player';
+		attacksRemaining = instance.player_speed ?? 1;
+
+		if (playerHealth <= 0) {
+			status = 'completed';
+		}
+	}
+
+	return {
+		health,
+		playerHealth,
+		attacksRemaining,
+		activeTurn,
+		status,
+		playerDamageToMonster,
+		monsterTurn,
+	};
+}
+
 function evaluateDelveResult({
 	updated_delve_stats,
-	rollResult,
-	rollValue,
-	level_result_Modifier,
-	isCrit,
-	duplicationCount,
-	baseRolls,
-	multiplier,
+	playerRoll,
+	monsterTurn = null,
+	combatSummary = null,
 }) {
 	// Basic validation
 	if (!updated_delve_stats || updated_delve_stats.length === 0) {
@@ -31,44 +219,39 @@ function evaluateDelveResult({
 	}
 
 	// Construct roll result string
-	let rollDescription = '';
-
-	if (level_result_Modifier > 0 && isCrit) {
-		rollDescription = `Critical Hit! You rolled: ${rollResult} ((${rollValue} + ${level_result_Modifier}) × ${multiplier})`;
-	} else if (isCrit) {
-		rollDescription = `Critical Hit! You rolled: ${rollResult} (${rollValue} × ${multiplier})`;
-	} else if (level_result_Modifier > 0) {
-		rollDescription = `You rolled: ${rollResult} (${rollValue} + ${level_result_Modifier} level bonus)`;
-	} else {
-		rollDescription = `You rolled: ${rollResult}`;
-	}
-
-	if (duplicationCount > 0) {
-		rollDescription += ` — Duplicated ${duplicationCount} ${duplicationCount === 1 ? 'time' : 'times'}`;
-	}
-
-	if (baseRolls.length > 1) {
-		rollDescription += ` (Dice rolls: ${baseRolls.join(', ')})`;
-	}
+	const rollDescription = formatRollDescription(playerRoll, 'You');
 
 	// outcome messages
 	let outcomeMessage = 'Keep going!';
 	let rewards = null;
-	
-	if (current.health > 0 && current.roll_attempt <= 0) {
-		outcomeMessage = 'Boooo you suck';
+	let monsterAttackMessage = null;
+
+	if (monsterTurn?.totalDamage > 0) {
+		const hitCount = monsterTurn.attacks.length;
+		monsterAttackMessage = `Monster attacks ${hitCount} ${hitCount === 1 ? 'time' : 'times'} for ${monsterTurn.totalDamage} total damage!`;
+	}
+
+	if (current.player_health <= 0) {
+		current.player_health = 0;
+		outcomeMessage = 'You were slain by the monster!';
 		current.status = 'completed';
 	} else if (current.health <= 0) {
 		current.health = 0;
 		outcomeMessage = 'Success! Monster killed!';
 		rewards = { type: 'loot_shard', amount: 1 };
 		current.status = 'completed';
+	} else if (monsterTurn) {
+		outcomeMessage = 'Monster turn complete. Your turn!';
+	} else if ((current.attacks_remaining ?? 0) > 0) {
+		outcomeMessage = `Your turn — ${current.attacks_remaining} attack(s) left.`;
 	}
 
-	return { //formats the output into a frontend readable format
+	return {
 		success: true,
 		rolled: rollDescription,
 		message: outcomeMessage,
+		monsterAttack: monsterAttackMessage,
+		monsterTurn: monsterTurn,
 		stats: {
 			level: current.level,
 			health: current.health,
@@ -77,19 +260,27 @@ function evaluateDelveResult({
 			monster_name: current.monster_name,
 			life_regen: current.life_regen,
 			damage_reduction: current.damage_reduction,
+			player_health: current.player_health,
+			player_max_health: current.player_max_health,
+			player_damage_reduction: current.player_damage_reduction,
+			player_speed: current.player_speed,
+			monster_speed: current.monster_speed,
+			active_turn: current.active_turn,
+			attacks_remaining: current.attacks_remaining,
 			modifiers: current.modifiers || [],
 			loot_shard_count: current.loot_shard_count,
 			status: current.status,
 		},
 		rewards: rewards,
 		raw: {
-			rollResult,
-			rollValue,
-			level_result_Modifier,
-			isCrit,
-			duplicationCount,
-			baseRolls,
-			multiplier,
+			rollResult: playerRoll.rollResult,
+			rollValue: playerRoll.rollValue,
+			level_result_Modifier: playerRoll.level_result_Modifier,
+			isCrit: playerRoll.isCrit,
+			duplicationCount: playerRoll.duplicationCount,
+			baseRolls: playerRoll.baseRolls,
+			multiplier: playerRoll.multiplier,
+			playerDamageToMonster: combatSummary?.playerDamageToMonster ?? null,
 		},
 	};
 }
@@ -169,25 +360,28 @@ function applyModifierEffects(
 ) {
 	let lifeRegen = 0;
 	let damageReduction = 0;
+	const COMBAT_ONLY_MODIFIERS = new Set([
+		'Speedy',
+		'Bloodthirsty',
+		'Deadly',
+		'Echoing',
+		'Prolific',
+		'Savage',
+	]);
+
 	// Loop through each selected modifier and apply its effect
 	selectedModifiers.forEach((mod) => {
 		switch (mod.name) {
 			case 'Giant':
 				// Doubling monster health based on modifier
-				monsterHealth *= 2; 
-				monsterName = `${mod.name} ${monsterName}`; 
-				break;
-
-			case 'Subtracting':
-				// Reducing roll attempts but not below 1
-				rollAttempt = Math.max(1, rollAttempt - 1); 
-				monsterName = `${mod.name} ${monsterName}`; 
+				monsterHealth *= 2;
+				monsterName = `${mod.name} ${monsterName}`;
 				break;
 
 			case 'Regenerative':
 				// Setting life regeneration based on monster level
-				lifeRegen = Math.floor(monsterLevel / 2); 
-				monsterName = `${mod.name} ${monsterName}`; 
+				lifeRegen = Math.floor(monsterLevel / 2);
+				monsterName = `${mod.name} ${monsterName}`;
 				break;
 
 			case 'Fortified':
@@ -207,6 +401,9 @@ function applyModifierEffects(
 				monsterName = `${mod.name} ${monsterName}`; // Modify name
 				break;
 			default:
+				if (COMBAT_ONLY_MODIFIERS.has(mod.name)) {
+					monsterName = `${mod.name} ${monsterName}`;
+				}
 				break;
 		}
 	});
@@ -253,6 +450,8 @@ function scaleMonster(monster, user_data, selectedModifiers) {
 	const lifeRegen = effects.lifeRegen;
 	const damageReduction = effects.damageReduction;
 	lootShardCount = effects.lootShardCount;
+	const monsterSpeed = computeMonsterSpeed(monsterLevel, selectedModifiers);
+
 	return {
 		level: monsterLevel,
 		health: monsterHealth, 
@@ -260,7 +459,8 @@ function scaleMonster(monster, user_data, selectedModifiers) {
 		lootShardCount: lootShardCount, 
 		moddedMonsterName: monsterName, 
 		life_regen: lifeRegen, 
-		damage_reduction: damageReduction, 
+		damage_reduction: damageReduction,
+		monster_speed: monsterSpeed,
 	};
 }
 
@@ -306,6 +506,7 @@ function processMonsterData(monster_data, modifier_data, user_data) {
 			modded_monster_name: scaledMonster.moddedMonsterName,
 			life_regen: scaledMonster.life_regen,
 			damage_reduction: scaledMonster.damage_reduction,
+			monster_speed: scaledMonster.monster_speed,
 		};
 
 		return result;
@@ -329,6 +530,13 @@ function formatDelveResults(rows) {
 		damage_reduction: rows[0].damage_reduction,
 		roll_attempt: rows[0].roll_attempt,
 		loot_shard_count: rows[0].loot_shard_count,
+		player_health: rows[0].player_health ?? rows[0].player_max_health ?? 100,
+		player_max_health: rows[0].player_max_health ?? 100,
+		player_damage_reduction: rows[0].player_damage_reduction ?? 0,
+		player_speed: rows[0].player_speed ?? 1,
+		monster_speed: rows[0].monster_speed ?? 2,
+		active_turn: rows[0].active_turn ?? 'player',
+		attacks_remaining: rows[0].attacks_remaining ?? rows[0].player_speed ?? 1,
 		status: rows[0].status,
 	};
 
@@ -352,4 +560,9 @@ module.exports = {
 	scaleMonster,
 	processMonsterData,
 	formatDelveResults,
+	computePlayerCombatStats,
+	computeMonsterSpeed,
+	resolveCombatAction,
+	executeMonsterAttacks,
+	formatRollDescription,
 };

@@ -34,6 +34,13 @@ module.exports.selectDelveInstanceById = (data, callback) => {
             d.damage_reduction,
             d.roll_attempt,
             d.loot_shard_count,
+            d.player_health,
+            d.player_max_health,
+            d.player_damage_reduction,
+            d.player_speed,
+            d.monster_speed,
+            d.active_turn,
+            d.attacks_remaining,
             d.status,
             mm.id AS modifier_id,
             mm.name AS modifier_name,
@@ -52,8 +59,8 @@ module.exports.selectDelveInstanceById = (data, callback) => {
 module.exports.setDelveInstance = (data, callback) => {
 	const SQLSTATMENT = `
         INSERT INTO delve_instances 
-        (user_id, monster_id, monster_name, level, health, life_regen, damage_reduction, roll_attempt, loot_shard_count)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        (user_id, monster_id, monster_name, level, health, life_regen, damage_reduction, roll_attempt, loot_shard_count, player_health, player_max_health, player_damage_reduction, monster_attack, active_turn, player_speed, monster_speed, attacks_remaining)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'player', ?, ?, ?);
     `;
 	const VALUES = [
 		data.user_id,
@@ -65,6 +72,12 @@ module.exports.setDelveInstance = (data, callback) => {
 		data.damage_reduction,
 		data.roll_attempt,
 		data.loot_shard_count,
+		data.player_health,
+		data.player_max_health,
+		data.player_damage_reduction,
+		data.player_speed,
+		data.monster_speed,
+		data.attacks_remaining,
 	];
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
@@ -73,10 +86,21 @@ module.exports.setDelveInstance = (data, callback) => {
 module.exports.updateDelveInstance = (data, callback) => {
 	const SQLSTATMENT = `
         UPDATE delve_instances
-        SET health = health - ?, roll_attempt = roll_attempt - 1, status = ?
+        SET health = ?,
+            player_health = ?,
+            active_turn = ?,
+            attacks_remaining = ?,
+            status = ?
         WHERE id = ?;
     `;
-	const VALUES = [data.roll_value, data.status, data.id];
+	const VALUES = [
+		data.health,
+		data.player_health,
+		data.active_turn,
+		data.attacks_remaining,
+		data.status,
+		data.id,
+	];
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
@@ -95,6 +119,13 @@ module.exports.displayDelve = (data, callback) => {
             d.damage_reduction,
             d.roll_attempt,
             d.loot_shard_count,
+            d.player_health,
+            d.player_max_health,
+            d.player_damage_reduction,
+            d.player_speed,
+            d.monster_speed,
+            d.active_turn,
+            d.attacks_remaining,
             d.status,
             mm.id AS modifier_id,
             mm.name AS modifier_name,

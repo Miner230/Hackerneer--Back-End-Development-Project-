@@ -1,5 +1,653 @@
 /* ==============================
-   Delve Layout & Container
+   Delve Page — Full Viewport Game
+============================== */
+html:has(body.delve) {
+	font-size: 16px;
+}
+
+body.delve {
+	background-color: #08080c;
+	color: #eee;
+	overflow: hidden;
+	height: 100dvh;
+	max-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+}
+
+body.delve #footer-placeholder {
+	display: none;
+}
+
+body.delve #navbar-placeholder {
+	flex-shrink: 0;
+}
+
+body.delve .navbar {
+	padding-top: 0.2rem;
+	padding-bottom: 0.2rem;
+}
+
+body.delve .navbar .logo {
+	max-height: 34px !important;
+}
+
+body.delve .navbar .nav-link {
+	padding: 0.3rem 0.55rem;
+	font-size: 0.88rem;
+}
+
+body.delve main {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+body.delve.delve-fullscreen {
+	overflow: hidden;
+}
+
+body.delve.delve-fullscreen #navbar-placeholder,
+body.delve.delve-fullscreen #footer-placeholder {
+	display: none !important;
+}
+
+body.delve.delve-fullscreen main {
+	height: 100dvh;
+	max-height: 100dvh;
+}
+
+body.delve.delve-fullscreen .delve-arena {
+	position: fixed;
+	inset: 0;
+	z-index: 9000;
+	width: 100vw;
+	height: 100dvh;
+	max-height: 100dvh;
+	padding:
+		env(safe-area-inset-top, 0)
+		env(safe-area-inset-right, 0)
+		env(safe-area-inset-bottom, 0)
+		env(safe-area-inset-left, 0);
+	box-sizing: border-box;
+}
+
+.delve-arena {
+	flex: 1;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+	position: relative;
+}
+
+/* ==============================
+   Top HUD — minimal run bar
+============================== */
+.delve-hud {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.35rem 0.55rem;
+	background: linear-gradient(180deg, rgba(8, 8, 12, 0.94) 0%, rgba(8, 8, 12, 0.72) 100%);
+	border-bottom: 1px solid rgba(255, 210, 120, 0.18);
+	backdrop-filter: blur(4px);
+	z-index: 3;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.delve-exit-btn {
+	flex-shrink: 0;
+	width: 32px;
+	height: 32px;
+	border: 1px solid rgba(255, 120, 120, 0.45);
+	border-radius: 8px;
+	background: rgba(80, 20, 20, 0.55);
+	color: #ffb3b3;
+	font-size: 1rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+}
+
+.delve-exit-btn:hover {
+	background: rgba(120, 30, 30, 0.75);
+}
+
+.delve-hud-minimal {
+	justify-content: flex-start;
+	padding: 0.3rem 0.45rem;
+}
+
+.delve-meta-atk {
+	border-color: rgba(255, 210, 120, 0.45);
+	color: #ffe08a;
+}
+
+.combat-mod-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	justify-content: center;
+	margin-top: 0.35rem;
+	min-height: 0;
+}
+
+.mod-tag {
+	display: inline-block;
+	padding: 0.3rem 0.7rem;
+	border-radius: 8px;
+	font-size: 0.85rem;
+	font-weight: 600;
+	line-height: 1.35;
+	color: #f0e4ff;
+	background: rgba(120, 80, 160, 0.35);
+	border: 1px solid rgba(180, 140, 220, 0.45);
+}
+
+.delve-meta-badge {
+	display: inline-block;
+	padding: 0.1rem 0.45rem;
+	border-radius: 999px;
+	font-size: 0.65rem;
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	color: #f5f5f5;
+	white-space: nowrap;
+}
+
+.delve-health-bar {
+	position: relative;
+	width: 100%;
+	overflow: hidden;
+	background-color: #222;
+}
+
+.combat-unit-health.monster-health-bar {
+	max-width: none;
+	width: 100%;
+	height: 34px;
+	border: 2px solid #aaa;
+	border-radius: 8px;
+	margin-bottom: 0;
+	box-shadow: none;
+}
+
+.combat-unit-health .health-label {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	font-size: 14px;
+	color: #fff;
+	font-weight: bold;
+	text-shadow: 0 0 3px black;
+}
+
+.combat-unit-health .health-fill {
+	height: 100%;
+	background: #f44336;
+	background-size: 300%;
+}
+
+/* ==============================
+   Battlefield — 3-column layout
+============================== */
+.delve-battlefield {
+	position: relative;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+	container-type: size;
+	container-name: battlefield;
+	--dice-size: min(20cqmin, 108px);
+	--dice-scene-size: calc(var(--dice-size) * 1.7);
+	background-image: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/bgdelve.png');
+	background-size: cover;
+	background-position: center;
+}
+
+.battlefield-layout {
+	position: relative;
+	z-index: 3;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	align-items: stretch;
+	gap: 0.35rem;
+	height: 100%;
+	padding: 0.35rem 0.4rem 0.5rem;
+	min-height: 0;
+}
+
+.combat-unit {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 0;
+	min-height: 0;
+	height: 100%;
+}
+
+.player-unit {
+	justify-self: start;
+}
+
+.monster-unit {
+	justify-self: end;
+}
+
+.combat-unit-hud {
+	width: 100%;
+	margin-bottom: 0.3rem;
+	flex-shrink: 0;
+}
+
+.combat-unit-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.45rem;
+	margin-bottom: 0.28rem;
+}
+
+.combat-unit-name {
+	margin: 0;
+	font-size: clamp(0.82rem, 2.8cqw, 1.15rem);
+	line-height: 1.1;
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.player-unit .combat-unit-name {
+	color: #9fd0ff;
+}
+
+.monster-unit .combat-unit-name {
+	color: #ffe08a;
+}
+
+.combat-unit-meta {
+	display: flex;
+	gap: 0.25rem;
+	flex-shrink: 0;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.combat-unit-health {
+	margin: 0;
+}
+
+.combat-unit-hp-text {
+	margin: 0.2rem 0 0;
+	font-size: 0.62rem;
+	color: rgba(255, 255, 255, 0.72);
+	text-align: center;
+}
+
+.combat-unit-desc {
+	margin: 0.2rem 0 0;
+	width: 100%;
+	font-size: 0.62rem;
+	line-height: 1.2;
+	color: rgba(255, 255, 255, 0.68);
+	text-align: center;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.combat-display {
+	position: relative;
+	width: 100%;
+	flex: 1 1 0;
+	min-height: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.player-display {
+	align-items: center;
+}
+
+.player-img,
+.combat-sprite,
+.monster-img {
+	display: block;
+	width: min(400px, 100%);
+	height: min(400px, 100%);
+	max-width: 400px;
+	max-height: 400px;
+	margin: 0;
+	object-fit: contain;
+	object-position: center bottom;
+	flex-shrink: 0;
+}
+
+.combat-sprite,
+.monster-img,
+.player-img {
+	filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.65));
+	transition: transform 0.4s ease, opacity 0.4s ease, filter 0.4s ease;
+}
+
+.player-img.player-hit {
+	animation: playerHitShake 0.45s ease;
+	filter: brightness(1.2) saturate(1.2) drop-shadow(0 10px 22px rgba(0, 0, 0, 0.65));
+}
+
+@keyframes playerHitShake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	25% {
+		transform: translateX(-6px);
+	}
+	75% {
+		transform: translateX(6px);
+	}
+}
+
+@supports not (width: 1cqh) {
+	.player-img,
+	.combat-sprite,
+	.monster-img {
+		width: min(400px, 90vw);
+		height: min(400px, 50vh);
+		max-width: 400px;
+		max-height: 400px;
+	}
+
+	.delve-battlefield {
+		--dice-size: min(20vw, 108px);
+		--dice-scene-size: calc(var(--dice-size) * 1.7);
+	}
+}
+
+/* ==============================
+   Dice dock — center of battlefield
+============================== */
+.dice-dock {
+	position: relative;
+	align-self: center;
+	justify-self: center;
+	z-index: 6;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	pointer-events: none;
+	padding: 0 0.15rem;
+	overflow: visible;
+}
+
+.dice-dock--enemy-turn .dice-scene {
+	filter: drop-shadow(0 6px 14px rgba(255, 90, 60, 0.65));
+}
+
+.turn-indicator {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	text-align: center;
+	white-space: nowrap;
+	line-height: 1.2;
+}
+
+.turn-indicator--player {
+	color: #ffe08a;
+	text-shadow:
+		0 0 14px rgba(255, 200, 80, 0.55),
+		0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.turn-indicator--enemy {
+	color: #ff8a62;
+	text-shadow:
+		0 0 14px rgba(255, 90, 60, 0.55),
+		0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.turn-indicator--waiting {
+	color: #9ed4ff;
+	text-shadow:
+		0 0 14px rgba(80, 160, 255, 0.45),
+		0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.turn-indicator--ended {
+	color: #d0d0d0;
+	text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.dice-dock .dice-stats,
+.dice-dock .dice-wrapper,
+.dice-dock .dice-container,
+.dice-dock .dice-roll-btn,
+.dice-dock .dice-scene {
+	pointer-events: auto;
+}
+
+.delve-battlefield .dice-wrapper,
+.delve-battlefield .dice-stats {
+	min-height: 0;
+	overflow: visible;
+}
+
+.delve-battlefield .dice-container,
+.delve-battlefield .dice-roll-btn {
+	width: var(--dice-scene-size);
+	height: var(--dice-scene-size);
+	overflow: visible;
+}
+
+.delve-battlefield .dice-scene {
+	filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.75));
+	overflow: visible;
+}
+
+.dice-dock--enemy-turn .dice-roll-btn {
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.dice-dock:has(.dice-roll-btn:not(:disabled):not(.rolling)) .dice-scene {
+	animation: diceReadyPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes diceReadyPulse {
+	0%,
+	100% {
+		filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.75));
+	}
+	50% {
+		filter: drop-shadow(0 6px 16px rgba(255, 210, 120, 0.45));
+	}
+}
+
+/* ==============================
+   Bottom Panel — combat chat log
+============================== */
+.delve-panel {
+	padding: 0;
+	background: linear-gradient(0deg, rgba(6, 6, 10, 0.97) 0%, rgba(6, 6, 10, 0.82) 100%);
+	border-top: 1px solid rgba(255, 210, 120, 0.18);
+	backdrop-filter: blur(4px);
+	z-index: 3;
+	min-height: 0;
+	max-height: 26dvh;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.delve-turn-bar {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.55rem 0.75rem 0.45rem;
+	background: linear-gradient(180deg, rgba(18, 14, 8, 0.98) 0%, rgba(10, 10, 14, 0.92) 100%);
+	border-bottom: 1px solid rgba(255, 210, 120, 0.28);
+	box-shadow: 0 -4px 18px rgba(255, 180, 80, 0.08);
+}
+
+.delve-combat-log {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	display: flex;
+	flex-direction: column;
+	gap: 0.28rem;
+	margin: 0.35rem 0.5rem 0.45rem;
+	padding: 0.35rem 0.45rem;
+	background: rgba(0, 0, 0, 0.35);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 8px;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 210, 120, 0.35) transparent;
+}
+
+.delve-combat-log::-webkit-scrollbar {
+	width: 5px;
+}
+
+.delve-combat-log::-webkit-scrollbar-thumb {
+	background: rgba(255, 210, 120, 0.35);
+	border-radius: 4px;
+}
+
+.combat-log-entry {
+	font-size: 0.72rem;
+	line-height: 1.35;
+	padding: 0.2rem 0.35rem;
+	border-radius: 4px;
+	word-break: break-word;
+}
+
+.combat-log-system {
+	color: rgba(255, 255, 255, 0.72);
+}
+
+.combat-log-encounter {
+	color: #ffe08a;
+	background: rgba(255, 224, 138, 0.08);
+}
+
+.combat-log-roll {
+	color: #d8e8ff;
+}
+
+.combat-log-damage {
+	color: #ff8a8a;
+	font-weight: bold;
+}
+
+.combat-log-crit {
+	color: #ff6b6b;
+	background: rgba(255, 80, 80, 0.1);
+}
+
+.combat-log-loot {
+	color: #ffe08a;
+	background: rgba(255, 200, 80, 0.12);
+}
+
+.combat-log-success {
+	color: #9cf0a8;
+	background: rgba(100, 220, 120, 0.1);
+}
+
+.combat-log-fail {
+	color: #ffb3b3;
+	background: rgba(255, 100, 100, 0.1);
+}
+
+.combat-log-info {
+	color: #b8d4ff;
+}
+
+.combat-log-player-damage {
+	color: #ff9f7a;
+	background: rgba(255, 120, 80, 0.12);
+	font-weight: bold;
+}
+
+.delve-stat-chips {
+	display: flex;
+	gap: 0.3rem;
+	margin-top: 0.3rem;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+}
+
+.stat-chip {
+	flex: 0 0 auto;
+	padding: 0.2rem 0.5rem;
+	border-radius: 999px;
+	font-size: 0.62rem;
+	line-height: 1.15;
+	background: rgba(0, 0, 0, 0.45);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	color: #f0f0f0;
+	white-space: nowrap;
+}
+
+.stat-chip-danger {
+	border-color: rgba(255, 100, 100, 0.45);
+	color: #ffb3b3;
+}
+
+.stat-chip-info {
+	border-color: rgba(100, 180, 255, 0.45);
+	color: #b3d9ff;
+}
+
+.stat-chip-primary {
+	border-color: rgba(120, 160, 255, 0.45);
+	color: #c6d6ff;
+}
+
+.stat-chip-player {
+	border-color: rgba(120, 180, 255, 0.45);
+	color: #b8d8ff;
+	background: rgba(30, 60, 110, 0.35);
+}
+
+.stat-chip-loot {
+	border-color: rgba(255, 200, 80, 0.5);
+	color: #ffe08a;
+}
+
+.stat-chip-status {
+	border-color: rgba(120, 220, 140, 0.45);
+	color: #b8f0c4;
+}
+
+.stat-chip-mods {
+	border-color: rgba(200, 160, 255, 0.45);
+	color: #e2c8ff;
+	max-width: 42vw;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ==============================
+   Delve Layout & Container (legacy)
 ============================== */
 #delveInfo {
 	display: flex;
@@ -35,16 +683,11 @@
 }
 
 /* ==============================
-   Monster Image
+   Monster Image (legacy — aligned to 400x400 in battlefield)
 ============================== */
 .monster-img {
-	width: 100%;
-	height: 100%;
-	max-width: 400px;
-	max-height: 400px;
 	object-fit: contain;
-	margin-bottom: 1rem;
-	transition: transform 0.4s ease;
+	margin-bottom: 0;
 }
 
 .flip-horizontal {
@@ -80,7 +723,7 @@
 }
 
 /* ==============================
-   Monster HP Bar
+   Monster HP Bar (legacy — delve uses .combat-unit-health above)
 ============================== */
 .monster-health-container {
 	width: 100%;
@@ -102,15 +745,6 @@
 	height: 100%;
 	background: #f44336;
 	background-size: 300%;
-}
-
-@keyframes hpGradient {
-	0% {
-		background-position: 0%;
-	}
-	100% {
-		background-position: 100%;
-	}
 }
 
 .health-label {
@@ -147,17 +781,40 @@
 	width: 100%;
 }
 
+.delve-end-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 120;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: rgba(0, 0, 0, 0.78);
+	padding: 2rem;
+	backdrop-filter: blur(3px);
+}
+
 /* ==============================
    Damage Float Animation
 ============================== */
 .damage-float {
 	position: absolute;
-	color: red;
-	font-size: 3.4rem;
+	color: #ff4d4d;
+	font-size: clamp(1.6rem, 8cqw, 2.8rem);
 	font-weight: bold;
 	animation: floatUp 3s ease-out forwards;
 	pointer-events: none;
-	z-index: 10;
+	z-index: 6;
+	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.player-damage-float {
+	color: #ff9f5a;
+}
+
+.monster-death {
+	opacity: 0.25;
+	filter: grayscale(1) blur(1px);
+	transform: scale(0.92);
 }
 
 @keyframes floatUp {
@@ -202,40 +859,66 @@
 }
 
 /* ==============================
-   Delve Background
+   Delve Background (moved to top)
 ============================== */
-body.delve {
-	background-image: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/bgdelve.png');
-	background-size: cover;
-	background-position: center;
-	background-attachment: fixed;
-	color: #eee;
+
+/* ==============================
+   Responsive — larger screens
+============================== */
+@media (min-width: 992px) {
+	.delve-battlefield {
+		--dice-size: min(18cqmin, 108px);
+		--dice-scene-size: calc(var(--dice-size) * 1.7);
+	}
+
+	.battlefield-layout {
+		gap: 0.5rem;
+		padding: 0.45rem 0.55rem 0.55rem;
+	}
+}
+
+@media (max-width: 576px) {
+	html:has(body.delve) {
+		font-size: 14px;
+	}
+
+	.delve-panel {
+		max-height: 28dvh;
+	}
+
+	.turn-indicator {
+		font-size: 1rem;
+	}
+
+	.delve-turn-bar {
+		padding: 0.45rem 0.55rem 0.35rem;
+	}
+
+	.delve-battlefield {
+		--dice-size: min(24cqmin, 96px);
+		--dice-scene-size: calc(var(--dice-size) * 1.7);
+	}
+
+	.battlefield-layout {
+		gap: 0.12rem;
+		padding: 0.2rem 0.15rem 0.35rem;
+	}
+
+	.combat-unit-name {
+		font-size: 0.78rem;
+	}
+
+	.combat-unit-meta .delve-meta-badge {
+		font-size: 0.56rem;
+		padding: 0.08rem 0.35rem;
+	}
 }
 
 /* ==============================
-   Responsive Layout (Under 1200px)
+   Legacy responsive (removed column layout)
 ============================== */
 @media (max-width: 1200px) {
-	.delve-layout-mobile {
-		flex-direction: column !important;
-	}
-
-	.delve-mobile-order-1 {
-		order: 1;
-	}
-
-	.delve-mobile-order-2 {
-		order: 2;
-	}
-
-	.delve-mobile-order-3 {
-		order: 3;
-	}
-
-	.monster-img {
-		max-width: 260px;
-		max-height: 260px;
-	}
+	/* kept for any external refs */
 }
 
 /* ==============================

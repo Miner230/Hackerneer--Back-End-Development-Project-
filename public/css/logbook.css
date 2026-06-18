@@ -54,6 +54,18 @@ body.logbook {
 	border: 2px solid #5e5e5e; /* rough stone border */
 	border-radius: 12px;
 	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6); /* heavy shadow for depth */
+	color: #f0e8d8;
+}
+
+.modifier-card .card-title {
+	font-size: 1.35rem;
+	font-weight: 700;
+	margin-bottom: 0.65rem;
+}
+
+.modifier-card .card-text {
+	font-size: 1.05rem;
+	line-height: 1.45;
 }
 
 /* ==============================

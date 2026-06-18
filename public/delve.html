@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 		<title>Hackerneer - Delve</title>
 
 		<!-- Bootstrap CSS -->
@@ -11,106 +11,150 @@
 		<link href="css/base.css" rel="stylesheet" />
 		<link href="css/dice.css" rel="stylesheet" />
 		<link href="css/game.css" rel="stylesheet" />
+		<link href="css/orientation.css" rel="stylesheet" />
 	</head>
 
 	<body class="delve d-flex flex-column min-vh-100">
 		<!-- Navbar -->
 		<div id="navbar-placeholder"></div>
 
-		<!-- Main content wrapper (NEW main tag) -->
 		<main class="flex-grow-1 d-flex flex-column">
-			<!-- Delve Controls -->
 			<div id="delveStartOverlay" class="delve-start-overlay d-flex">
 				<div class="delve-start-box text-center position-relative">
 					<a href="profile.html" class="custom-close position-absolute top-0 end-0 m-2" aria-label="Close"></a>
 					<h4 id="statusMessage" class="text-white mb-3">Ready to Begin?</h4>
 					<button class="btn btn-primary btn-lg" id="createDelve">Start Delve</button>
-					<button class="btn btn-warning btn-lg d-none mt-3" id="startNextDelveBtn">Start Next Delve</button>
 				</div>
 			</div>
 
-			<!-- Pixel Transition Overlay -->
 			<div id="pixelTransitionOverlay" class="pixel-transition-overlay d-none"></div>
 
-			<div id="mainContent" class="d-none">
-				<h4 id="monsterName" class="text-white text-center mt-1"></h4>
-				<div class="d-flex justify-content-center align-items-center text-white mb-1" id="monsterMeta">
-					<div id="monsterLevel" class="me-3"></div>
-					<div id="monsterCurrentHP"></div>
-				</div>
+			<div id="mainContent" class="delve-arena d-none">
+				<header class="delve-hud delve-hud-minimal">
+					<button type="button" class="delve-exit-btn" id="exitDelveBtn" aria-label="Exit delve">✕</button>
+				</header>
 
-				<div class="monster-health-bar mx-auto mb-3">
-					<div id="health-fill" class="health-fill"></div>
-					<div class="health-label" id="health-label">HP: 100%</div>
-				</div>
+				<section class="delve-battlefield">
+					<div class="battlefield-layout">
+						<article class="combat-unit player-unit" id="playerUnit">
+							<header class="combat-unit-hud">
+								<div class="combat-unit-header">
+									<h2 id="playerName" class="combat-unit-name">Hacker</h2>
+									<div class="combat-unit-meta">
+										<span id="playerAttacks" class="delve-meta-badge delve-meta-atk"></span>
+										<span id="playerLevel" class="delve-meta-badge"></span>
+										<span id="playerSpeed" class="delve-meta-badge"></span>
+										<span id="playerDR" class="delve-meta-badge"></span>
+									</div>
+								</div>
+								<div class="monster-health-bar delve-health-bar combat-unit-health">
+									<div id="playerHealthFill" class="health-fill"></div>
+									<div class="health-label" id="playerHealthLabel">HP: 100%</div>
+								</div>
+								<p id="playerCurrentHP" class="combat-unit-hp-text"></p>
+							</header>
+							<div class="combat-display player-display" id="playerDisplay">
+								<img
+									id="playerImage"
+									class="combat-sprite player-img"
+									src="https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/mage.png"
+									alt="Player"
+								/>
+							</div>
+						</article>
 
-				<div class="container">
-					<div class="row text-center align-items-center justify-content-center delve-layout-mobile">
-						<div class="col-md-4 mb-4 delve-mobile-order-2">
+						<div class="dice-dock">
 							<div class="dice-stats">
-								<div class="dice-wrapper mb-1">
-									<div class="dice-container position-relative">
-										<button class="dice roll" title="Roll the dice">
-											<!-- Dice faces -->
-											<div class="face front"><div class="pip pip1"></div></div>
-											<div class="face back">
-												<div class="pip pip1"></div>
-												<div class="pip pip2"></div>
-												<div class="pip pip3"></div>
-												<div class="pip pip4"></div>
-												<div class="pip pip5"></div>
-												<div class="pip pip6"></div>
-											</div>
-											<div class="face right">
-												<div class="pip pip1"></div>
-												<div class="pip pip2"></div>
-												<div class="pip pip3"></div>
-											</div>
-											<div class="face left">
-												<div class="pip pip1"></div>
-												<div class="pip pip2"></div>
-												<div class="pip pip3"></div>
-												<div class="pip pip4"></div>
-											</div>
-											<div class="face top">
-												<div class="pip pip1"></div>
-												<div class="pip pip2"></div>
-											</div>
-											<div class="face bottom">
-												<div class="pip pip1"></div>
-												<div class="pip pip2"></div>
-												<div class="pip pip3"></div>
-												<div class="pip pip4"></div>
-												<div class="pip pip5"></div>
+								<div class="dice-wrapper">
+									<div class="dice-container">
+										<button type="button" class="dice-roll-btn roll" title="Roll the dice" aria-label="Roll the dice">
+											<div class="dice-scene">
+												<div class="dice-cube" id="diceCube">
+													<div class="dice-core" aria-hidden="true"></div>
+													<div class="dice-face dice-face-front" data-value="1">
+														<span class="pip"></span>
+													</div>
+													<div class="dice-face dice-face-top" data-value="2">
+														<span class="pip"></span>
+														<span class="pip"></span>
+													</div>
+													<div class="dice-face dice-face-right" data-value="3">
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+													</div>
+													<div class="dice-face dice-face-left" data-value="4">
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+													</div>
+													<div class="dice-face dice-face-bottom" data-value="5">
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+													</div>
+													<div class="dice-face dice-face-back" data-value="6">
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+														<span class="pip"></span>
+													</div>
+												</div>
 											</div>
 										</button>
 									</div>
 								</div>
-								<div class="d-flex justify-content-center">
-									<div id="diceResult" aria-live="polite"></div>
+							</div>
+						</div>
+
+						<article class="combat-unit monster-unit" id="primaryMonster" data-monster-slot="0">
+							<header class="combat-unit-hud">
+								<div class="combat-unit-header">
+									<h2 id="monsterName" class="combat-unit-name"></h2>
+									<div class="combat-unit-meta" id="monsterMeta">
+										<span id="monsterLevel" class="delve-meta-badge"></span>
+										<span id="monsterSpeed" class="delve-meta-badge"></span>
+										<span id="monsterCurrentHP" class="delve-meta-badge"></span>
+									</div>
 								</div>
+								<div class="monster-health-bar delve-health-bar combat-unit-health">
+									<div id="health-fill" class="health-fill"></div>
+									<div class="health-label" id="health-label">HP: 100%</div>
+								</div>
+								<p id="monsterDR" class="combat-unit-hp-text"></p>
+								<div id="monsterMods" class="combat-mod-tags"></div>
+							</header>
+							<div class="combat-display monster-display">
+								<img id="monsterImage" class="combat-sprite monster-img" alt="Monster" />
 							</div>
-						</div>
+							<p id="monsterDesc" class="combat-unit-desc d-none d-md-block"></p>
+						</article>
+					</div>
+				</section>
 
-						<div class="col-md-4 mb-4 delve-mobile-order-1">
-							<div class="monster-display position-relative">
-								<img id="monsterImage" class="monster-img mb-3" alt="Monster" />
-								<p id="monsterDesc" class="small text-white"></p>
-							</div>
-						</div>
+				<footer class="delve-panel">
+					<div class="delve-turn-bar" aria-live="polite">
+						<p id="turnIndicator" class="turn-indicator turn-indicator--player">Your turn</p>
+					</div>
+					<div id="delveCombatLog" class="delve-combat-log" aria-live="polite" aria-label="Combat log"></div>
+				</footer>
 
-						<div class="col-md-4 mb-4 delve-mobile-order-3">
-							<div class="monster-stats text-white" id="delveStats"></div>
-						</div>
+				<div id="delveEndOverlay" class="delve-end-overlay d-none">
+					<div class="delve-start-box text-center">
+						<h4 id="delveEndMessage" class="text-white mb-3">Victory!</h4>
+						<button class="btn btn-warning btn-lg" id="startNextDelveBtn">Start Next Delve</button>
 					</div>
 				</div>
 			</div>
 		</main>
 
-		<!-- Footer -->
 		<div id="footer-placeholder"></div>
 
-		<!-- JS Dependencies -->
 		<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
 		<script src="js/userAccountToggles.js"></script>
@@ -120,8 +164,8 @@
 			});
 		</script>
 
-		<!-- Core Scripts -->
 		<script src="js/getCurrentURL.js"></script>
+		<script src="js/orientationLock.js"></script>
 		<script src="js/queryCmds.js"></script>
 		<script src="js/navbar.js"></script>
 		<script src="js/mainUtils.js"></script>

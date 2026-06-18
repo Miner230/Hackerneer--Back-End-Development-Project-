@@ -30,5 +30,8 @@ function fetchMethod(url, callback, method = 'GET', data = null, token = null) {
 				response.json().then((responseData) => callback(response.status, responseData));
 			}
 		})
-		.catch((error) => console.error(`Error from ${method} ${url}:`, error));
+		.catch((error) => {
+		console.error(`Error from ${method} ${url}:`, error);
+		callback(0, { error: error.message });
+	});
 }

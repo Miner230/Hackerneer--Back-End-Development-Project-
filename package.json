@@ -8,6 +8,10 @@
 		"start": "node index.js",
 		"dev": "nodemon index.js",
 		"init_tables": "node src/configs/createSchema.js && node src/configs/initTables.js",
+		"migrate_delve_combat": "node src/configs/migrateDelveCombat.js",
+		"migrate_delve_speed": "node src/configs/migrateDelveSpeed.js",
+		"migrate_monster_modifiers": "node src/configs/migrateMonsterModifiers.js",
+		"migrate_remove_no_of_rolls_loot": "node src/configs/migrateRemoveNoOfRollsLoot.js",
 		"format": "prettier --write ."
 	},
 	"author": "Angus Kaile Wight",

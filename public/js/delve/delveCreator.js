@@ -11,12 +11,71 @@ document.addEventListener('DOMContentLoaded', () => {
 		flipRandomly();
 	}
 
-	//bind delve start buttons
 	const createDelveBtn = document.getElementById('createDelve');
 	const startNextDelveBtn = document.getElementById('startNextDelveBtn');
+	const exitDelveBtn = document.getElementById('exitDelveBtn');
+
 	if (createDelveBtn) createDelveBtn.addEventListener('click', startDelve);
 	if (startNextDelveBtn) startNextDelveBtn.addEventListener('click', startDelve);
+	if (exitDelveBtn) exitDelveBtn.addEventListener('click', exitDelve);
+
+	document.addEventListener('fullscreenchange', syncDelveFullscreenState);
 });
+
+//update player HUD from delve stats
+function updatePlayerUI(delve) {
+	const username = localStorage.getItem('username') || 'Hacker';
+	const userLevel = localStorage.getItem('level') || delve.player_level || '?';
+
+	const playerName = document.getElementById('playerName');
+	const playerLevel = document.getElementById('playerLevel');
+	const playerDR = document.getElementById('playerDR');
+	const playerCurrentHP = document.getElementById('playerCurrentHP');
+	const playerHealthFill = document.getElementById('playerHealthFill');
+	const playerHealthLabel = document.getElementById('playerHealthLabel');
+
+	const currentPlayerHealth = delve.player_health ?? delve.player_max_health ?? 0;
+	const maxPlayerHealth = delve.player_max_health || parseInt(sessionStorage.getItem('maxPlayerHealth')) || 100;
+	let playerPercent = Math.floor((currentPlayerHealth / maxPlayerHealth) * 100);
+	playerPercent = Math.min(100, Math.max(0, playerPercent));
+
+	if (playerName) playerName.textContent = username;
+	if (playerLevel) playerLevel.textContent = `Lv. ${userLevel}`;
+	const playerAttacks = document.getElementById('playerAttacks');
+	if (playerAttacks) {
+		playerAttacks.textContent = `ATK ${delve.attacks_remaining ?? delve.player_speed ?? '?'}/${delve.player_speed ?? '?'}`;
+	}
+	if (playerDR) playerDR.textContent = `DR ${delve.player_damage_reduction ?? 0}%`;
+	const playerSpeedEl = document.getElementById('playerSpeed');
+	if (playerSpeedEl) playerSpeedEl.textContent = `SPD ${delve.player_speed ?? '?'}`;
+	if (playerCurrentHP) playerCurrentHP.textContent = `HP ${currentPlayerHealth} / ${maxPlayerHealth}`;
+	if (playerHealthFill) {
+		playerHealthFill.style.width = `${playerPercent}%`;
+		playerHealthFill.style.opacity = playerPercent === 0 ? '0' : '1';
+	}
+	if (playerHealthLabel) playerHealthLabel.textContent = `HP: ${playerPercent}%`;
+
+	updateTurnUI(delve);
+}
+
+function updateMonsterHealthUI(currentHealth) {
+	const maxHealth = parseInt(sessionStorage.getItem('maxHealth')) || 100;
+	let percent = Math.floor((currentHealth / maxHealth) * 100);
+	percent = Math.min(100, Math.max(0, percent));
+
+	const healthFill = document.getElementById('health-fill');
+	const healthLabel = document.getElementById('health-label');
+	const hpLabel = document.getElementById('monsterCurrentHP');
+
+	if (healthFill) {
+		healthFill.style.width = `${percent}%`;
+		healthFill.style.opacity = percent === 0 ? '0' : '1';
+	}
+	if (healthLabel) healthLabel.textContent = `HP: ${percent}%`;
+	if (hpLabel) hpLabel.textContent = `HP ${currentHealth}`;
+
+	sessionStorage.setItem('delvePrevHealth', String(currentHealth));
+}
 
 //load delve info and render ui
 function loadDelveInfo() {
@@ -28,14 +87,6 @@ function loadDelveInfo() {
 		let monsterImageId = null;
 		let monsterName = null;
 		let monsterDesc = null;
-
-		//extract roll value for damage
-		const rawData = data?.currentInstance?.raw || data?.raw;
-		const rollValue = rawData && typeof rawData.rollValue === 'number' ? rawData.rollValue : null;
-		if (rollValue !== null) {
-			sessionStorage.setItem('lastRollValue', rollValue);
-			showDamage(rollValue);
-		}
 
 		//parse backend data shapes
 		if (data.stats) delve = data.stats;
@@ -62,6 +113,9 @@ function loadDelveInfo() {
 		if (delve.health && !sessionStorage.getItem('maxHealth')) {
 			sessionStorage.setItem('maxHealth', delve.health);
 		}
+		if (delve.player_max_health && !sessionStorage.getItem('maxPlayerHealth')) {
+			sessionStorage.setItem('maxPlayerHealth', delve.player_max_health);
+		}
 
 		//save delve id
 		if (delve.id) sessionStorage.setItem('delveID', delve.id);
@@ -77,47 +131,61 @@ function loadDelveInfo() {
 			img.style.opacity = '1';
 			img.style.filter = 'none';
 		}
-		if (nameEl) nameEl.textContent = monsterName;
+		if (nameEl) {
+			nameEl.textContent = monsterName;
+			nameEl.title = monsterDesc || '';
+		}
 		if (descEl) descEl.textContent = monsterDesc;
 
-		//update health bar
+		//update monster health bar
 		const currentHealth = delve.health || 0;
-		const maxHealth = parseInt(sessionStorage.getItem('maxHealth')) || 100;
-		let percent = Math.floor((currentHealth / maxHealth) * 100);
-		percent = Math.min(100, Math.max(0, percent));
 
-		const healthFill = document.getElementById('health-fill');
-		const healthLabel = document.getElementById('health-label');
-		if (healthFill) {
-			healthFill.style.width = `${percent}%`;
-			healthFill.style.opacity = percent === 0 ? '0' : '1';
+		updatePlayerUI(delve);
+
+		const delveId = delve.id;
+		const loggedDelveId = sessionStorage.getItem('delveLogInitialized');
+		if (delveId && loggedDelveId !== String(delveId)) {
+			appendCombatLog(`${monsterName} (Lv. ${delve.level || '?'}) appears!`, 'encounter');
+			appendCombatLog(
+				`Your SPD ${delve.player_speed || '?'} · Monster SPD ${delve.monster_speed || '?'} · Your DR ${delve.player_damage_reduction || 0}%`,
+				'info'
+			);
+			if (delve.loot_shard_count > 0) {
+				appendCombatLog(`Victory loot: ${delve.loot_shard_count} shard(s).`, 'loot');
+			}
+			sessionStorage.setItem('delveLogInitialized', String(delveId));
 		}
-		if (healthLabel) healthLabel.textContent = `HP: ${percent}%`;
 
-		//update labels
+		const prevHealth = sessionStorage.getItem('delvePrevHealth');
+		if (prevHealth !== null && currentHealth > parseInt(prevHealth, 10)) {
+			appendCombatLog(`Monster regenerated ${currentHealth - parseInt(prevHealth, 10)} HP.`, 'info');
+		}
+
+		updateMonsterHealthUI(currentHealth);
+
+		//update monster labels
 		const levelLabel = document.getElementById('monsterLevel');
-		const hpLabel = document.getElementById('monsterCurrentHP');
+		const speedLabel = document.getElementById('monsterSpeed');
+		const drText = document.getElementById('monsterDR');
 		if (levelLabel) levelLabel.textContent = `Lv. ${delve.level || '?'}`;
-		if (hpLabel) hpLabel.textContent = `HP: ${currentHealth} / ${maxHealth}`;
-
-		//update stats and modifiers
-		const statsEl = document.getElementById('delveStats');
-		if (statsEl) {
-			const mods = Array.isArray(delve.modifiers)
-				? delve.modifiers.map((mod) => `${mod.name}: ${mod.description}`).join('<br>')
-				: 'No modifier info';
-			statsEl.innerHTML = `
-        <h1 class="text-warning mb-3">Monster Stats</h1>
-        <p><span class="text-danger">Life Regen:</span> <span class="text-white">${delve.life_regen}</span></p>
-        <p><span class="text-info">Damage Reduction:</span> <span class="text-white">${delve.damage_reduction}</span></p>
-        <p><span class="text-primary">Roll Attempts:</span> <span class="text-white">${delve.roll_attempt}</span></p>
-        <p><span class="rainbow-text">Loot Shards:</span> <span class="text-white">${delve.loot_shard_count}</span></p>
-        <p><span class="text-success">Status:</span> <span class="text-white">${delve.status}</span></p>
-        <div class="mt-3">
-          <span class="text-warning">Modifiers:</span><br />
-          <span class="text-light small">${mods}</span>
-        </div>`;
+		if (speedLabel) speedLabel.textContent = `SPD ${delve.monster_speed || '?'}`;
+		if (drText) {
+			drText.textContent = `DR ${delve.damage_reduction || 0}% · Regen ${delve.life_regen || 0} · ${delve.loot_shard_count || 0} shards`;
 		}
+
+		const modsEl = document.getElementById('monsterMods');
+		if (modsEl) {
+			const mods = Array.isArray(delve.modifiers) ? delve.modifiers : [];
+			if (mods.length > 0) {
+				modsEl.innerHTML = mods
+					.map((mod) => `<span class="mod-tag" title="${mod.description || mod.name}">${mod.name}</span>`)
+					.join('');
+			} else {
+				modsEl.innerHTML = '';
+			}
+		}
+
+		updateTurnUI(delve);
 	};
 
 	//auth check
@@ -136,25 +204,87 @@ function startDelve() {
 	playPixelTransition(() => {
 		document.getElementById('delveStartOverlay')?.classList.add('d-none');
 		document.getElementById('createDelve')?.classList.add('d-none');
-		document.getElementById('startNextDelveBtn')?.classList.add('d-none');
+		document.getElementById('delveEndOverlay')?.classList.add('d-none');
 		const mainContent = document.getElementById('mainContent');
 		if (mainContent) mainContent.classList.remove('d-none');
 
-		//reset session data
 		sessionStorage.removeItem('delveID');
 		sessionStorage.removeItem('maxHealth');
+		sessionStorage.removeItem('maxPlayerHealth');
+		sessionStorage.removeItem('delveLogInitialized');
+		sessionStorage.removeItem('delvePrevHealth');
 
-		//enable dice roll
 		const rollBtn = document.querySelector('.roll');
 		if (rollBtn) {
 			rollBtn.disabled = false;
 			rollBtn.classList.remove('disabled');
 		}
 
-		//trigger animations and data load
-		animateDiceRollSequence();
+		clearCombatLog();
+		enterDelveFullscreen();
+		animateDiceRollSequence([], { showPrompt: true });
 		loadDelveInfo();
 	});
+}
+
+function enterDelveFullscreen() {
+	document.body.classList.add('delve-fullscreen');
+
+	const target = document.getElementById('mainContent') || document.documentElement;
+	const request =
+		target.requestFullscreen?.() ||
+		target.webkitRequestFullscreen?.() ||
+		target.msRequestFullscreen?.();
+
+	if (request?.catch) {
+		request.catch(() => {});
+	}
+
+	if (window.MobileLandscape?.lock) {
+		window.MobileLandscape.lock();
+	}
+}
+
+function exitDelveFullscreen() {
+	document.body.classList.remove('delve-fullscreen');
+
+	if (document.fullscreenElement || document.webkitFullscreenElement) {
+		const exit =
+			document.exitFullscreen?.() ||
+			document.webkitExitFullscreen?.() ||
+			document.msExitFullscreen?.();
+		if (exit?.catch) exit.catch(() => {});
+	}
+
+	if (window.MobileLandscape?.unlock) {
+		window.MobileLandscape.unlock();
+	}
+}
+
+function syncDelveFullscreenState() {
+	const isFullscreen = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+	const mainVisible = !document.getElementById('mainContent')?.classList.contains('d-none');
+
+	if (isFullscreen && mainVisible) {
+		document.body.classList.add('delve-fullscreen');
+		return;
+	}
+
+	if (!isFullscreen && mainVisible) {
+		document.body.classList.add('delve-fullscreen');
+	}
+}
+
+function exitDelve() {
+	exitDelveFullscreen();
+
+	sessionStorage.removeItem('delveID');
+	sessionStorage.removeItem('maxHealth');
+	sessionStorage.removeItem('maxPlayerHealth');
+	sessionStorage.removeItem('delveLogInitialized');
+	sessionStorage.removeItem('delvePrevHealth');
+
+	window.location.href = 'profile.html';
 }
 
 //close delve overlay

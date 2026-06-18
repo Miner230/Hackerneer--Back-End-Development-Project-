@@ -130,6 +130,14 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       damage_reduction INT NOT NULL,
       roll_attempt INT NOT NULL,
       loot_shard_count INT NOT NULL,
+      player_health INT NOT NULL,
+      player_max_health INT NOT NULL,
+      player_damage_reduction INT NOT NULL DEFAULT 0,
+      monster_attack INT NOT NULL DEFAULT 0,
+      active_turn VARCHAR(10) NOT NULL DEFAULT 'player',
+      player_speed INT NOT NULL DEFAULT 1,
+      monster_speed INT NOT NULL DEFAULT 2,
+      attacks_remaining INT NOT NULL DEFAULT 1,
       status VARCHAR(20) DEFAULT 'in progress'
   );
 
@@ -268,10 +276,15 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   INSERT INTO monster_modifiers (name, description, weight)
   VALUES
   ("Giant", "Doubles the monster's max HP.", 30),
-  ("Subtracting", "Reduces the maximum number of roll attempts", 30),
   ("Regenerative", "Monster heals a small amount at the end of each turn.", 30),
   ("Fortified", "Takes reduced damage.", 30),
-  ("Shiny", "Doubles reward count", 1);
+  ("Shiny", "Doubles reward count", 1),
+  ("Speedy", "Multiplies monster attack speed by 1.5×.", 25),
+  ("Bloodthirsty", "Increases monster critical hit chance.", 25),
+  ("Deadly", "Increases monster critical hit damage.", 25),
+  ("Echoing", "Increases the chance for monster dice to duplicate.", 20),
+  ("Prolific", "Increases how many times monster dice can duplicate.", 15),
+  ("Savage", "Monster attacks roll with bonus level scaling.", 20);
 
   INSERT INTO loot (name, mechanic, stat_description, statline, rarity, lore, craft_cost, weight)
   VALUES 
@@ -295,13 +308,6 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   ("Refined Essence of chase", "crit_power", "+30 to critical power ☠︎", 30, "Rare", "The thrill intensifies.", 150, 50),
   ("Greater Essence of chase", "crit_power", "+40 to critical power ☠︎", 40, "Epic", "You see only the target.", 300, 10),
   ("Perfect Essence of chase", "crit_power", "+50 to critical power ☠︎", 50, "Legendary", "You are the hunt incarnate.", 500, 1),
-
-  -- Essence of Thrill (+ to roll attempts)
-  ("Lesser Essence of thrill", "no_of_rolls", "+1 to maximum roll attempts", 1, "Common", "Just one more roll...", 50, 200),
-  ("Mediocre Essence of thrill", "no_of_rolls", "+2 to maximum roll attempts", 2, "Uncommon", "The thrill builds.", 100, 100),
-  ("Refined Essence of thrill", "no_of_rolls", "+3 to maximum roll attempts", 3, "Rare", "You crave another chance.", 150, 50),
-  ("Greater Essence of thrill", "no_of_rolls", "+4 to maximum roll attempts", 4, "Epic", "The dice call to you.", 300, 10),
-  ("Perfect Essence of thrill", "no_of_rolls", "+5 to maximum roll attempts", 5, "Legendary", "You live for the thrill.", 500, 1),
 
   -- Essence of Mind (+ to duplication chance)
   ("Lesser Essence of mind", "duplication_chance", "+1 to duplication chance ☆", 1, "Common", "The mind is all you need.", 50, 200),

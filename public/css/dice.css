@@ -1,191 +1,259 @@
 /* ==============================
-   Base & Reset
+   Dice Variables & Layout
 ============================== */
-* {
-	margin: 0;
-	padding: 0;
-	border: 0;
-	outline: 0;
-	box-sizing: border-box;
+:root {
+	--dice-size: 108px;
+	--dice-scene-size: calc(var(--dice-size) * 1.7);
+	--dice-overshoot: 4px;
+	--dice-face-size: calc(var(--dice-size) + var(--dice-overshoot));
+	--dice-face-inset: calc(var(--dice-overshoot) / -2);
+	--dice-half: calc(var(--dice-size) / 2);
+	--dice-pip: calc(var(--dice-size) * 0.148);
+	--dice-face: #f2f2f2;
+	--dice-edge: #c8c8c8;
+	--dice-core: #e6e6e6;
+	--dice-pip-color: #1a1a1a;
 }
 
-/* ==============================
-   Wrapper Layout
-============================== */
 .dice-wrapper {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	min-height: 300px;
 }
 
 .dice-container {
 	position: relative;
+	width: var(--dice-scene-size);
+	height: var(--dice-scene-size);
+	margin: 0 auto;
 	overflow: visible;
 }
 
-/* ==============================
-   Dice Base Cube
-============================== */
-.dice {
+.dice-scene {
 	position: relative;
-	width: 100px;
-	height: 100px;
-	transform-style: preserve-3d;
-	transition: 1s ease;
-	background: transparent;
-	border: none;
-}
-
-.dice.roll {
-	background: none;
-	cursor: pointer;
-	padding: 0;
-}
-
-/* ==============================
-   Dice Animation (unused class)
-============================== */
-@keyframes rolling {
-	0% {
-		transform: rotateX(0deg) rotateY(0deg);
-	}
-	100% {
-		transform: rotateX(720deg) rotateY(720deg);
-	}
-}
-
-/* ==============================
-   Dice Faces
-============================== */
-.face {
-	position: absolute;
-	width: 100px;
-	height: 100px;
-	background: linear-gradient(145deg, #e6e6e6, #ffffff);
-	border: 4px solid #e0dede;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.front {
-	transform: translateZ(50px);
-}
-.back {
-	transform: rotateX(180deg) translateZ(50px);
-}
-.top {
-	transform: rotateX(90deg) translateZ(50px);
-}
-.bottom {
-	transform: rotateX(-90deg) translateZ(50px);
-}
-.right {
-	transform: rotateY(90deg) translateZ(50px);
-}
-.left {
-	transform: rotateY(-90deg) translateZ(50px);
-}
-
-/* ==============================
-   Dice Pips (Dots)
-============================== */
-.face::before {
-	content: '';
-	position: absolute;
 	width: 100%;
 	height: 100%;
+	perspective: 1100px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: visible;
+}
+
+.dice-cube {
+	position: relative;
+	width: var(--dice-size);
+	height: var(--dice-size);
+	transform-style: preserve-3d;
+	-webkit-transform-style: preserve-3d;
+	transform-origin: center center;
+}
+
+.dice-shadow {
+	display: none;
+}
+
+.dice-roll-btn {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	border-radius: 20px;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.dice-roll-btn .dice-scene {
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+.dice-roll-btn .dice-cube {
+	pointer-events: none;
+}
+
+.dice-roll-btn:not(:disabled):hover {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.dice-roll-btn:disabled,
+.dice-roll-btn.rolling {
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.dice-cube.is-rolling {
+	transition: transform 0.95s cubic-bezier(0.18, 0.84, 0.32, 1);
+}
+
+/* ==============================
+   Inner core — fills void visible at seams
+============================== */
+.dice-core {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: var(--dice-size);
+	height: var(--dice-size);
+	background: var(--dice-core);
+	transform: translateZ(0);
+	box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.08);
+	pointer-events: none;
+}
+
+/* ==============================
+   Dice Faces (tight overlapping cube)
+============================== */
+.dice-face {
+	position: absolute;
+	left: var(--dice-face-inset);
+	top: var(--dice-face-inset);
+	width: var(--dice-face-size);
+	height: var(--dice-face-size);
+	box-sizing: border-box;
 	display: grid;
-	place-items: center;
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows: repeat(3, 1fr);
+	padding: 15px;
+	gap: 0;
+	border-radius: 0;
+	background:
+		linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 38%),
+		linear-gradient(180deg, #fafafa 0%, var(--dice-face) 52%, #e4e4e4 100%);
+	border: 1px solid var(--dice-edge);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	transform-origin: center center;
 }
 
-/* Face 1 - Center dot */
-.face.front::before {
-	background-image: radial-gradient(circle at center, black 8px, transparent 9px);
-	background-repeat: no-repeat;
-	background-position: center;
+.pip {
+	width: var(--dice-pip);
+	height: var(--dice-pip);
+	border-radius: 50%;
+	background: radial-gradient(circle at 32% 28%, #4a4a4a 0%, var(--dice-pip-color) 58%, #000 100%);
+	box-shadow: inset -1px -2px 2px rgba(255, 255, 255, 0.15);
+	justify-self: center;
+	align-self: center;
 }
 
-/* Face 2 - Diagonal */
-.face.top::before {
-	background-image:
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px);
-	background-repeat: no-repeat;
-	background-position:
-		25% 25%,
-		75% 75%;
-	background-size: 12px 12px;
+/* Pip positions — standard 3x3 die layout */
+.dice-face-front .pip:nth-child(1) {
+	grid-row: 2;
+	grid-column: 2;
 }
 
-/* Face 3 - Diagonal + center */
-.face.right::before {
-	background-image:
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px);
-	background-repeat: no-repeat;
-	background-position:
-		25% 25%,
-		50% 50%,
-		75% 75%;
-	background-size: 12px 12px;
+.dice-face-top .pip:nth-child(1) {
+	grid-row: 1;
+	grid-column: 1;
+}
+.dice-face-top .pip:nth-child(2) {
+	grid-row: 3;
+	grid-column: 3;
 }
 
-/* Face 4 - Corners */
-.face.left::before {
-	background-image:
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px);
-	background-repeat: no-repeat;
-	background-position:
-		20% 20%,
-		80% 20%,
-		20% 80%,
-		80% 80%;
-	background-size: 12px 12px;
+.dice-face-right .pip:nth-child(1) {
+	grid-row: 1;
+	grid-column: 1;
+}
+.dice-face-right .pip:nth-child(2) {
+	grid-row: 2;
+	grid-column: 2;
+}
+.dice-face-right .pip:nth-child(3) {
+	grid-row: 3;
+	grid-column: 3;
 }
 
-/* Face 5 - Corners + center */
-.face.bottom::before {
-	background-image:
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px);
-	background-repeat: no-repeat;
-	background-position:
-		20% 20%,
-		80% 20%,
-		50% 50%,
-		20% 80%,
-		80% 80%;
-	background-size: 12px 12px;
+.dice-face-left .pip:nth-child(1) {
+	grid-row: 1;
+	grid-column: 1;
+}
+.dice-face-left .pip:nth-child(2) {
+	grid-row: 1;
+	grid-column: 3;
+}
+.dice-face-left .pip:nth-child(3) {
+	grid-row: 3;
+	grid-column: 1;
+}
+.dice-face-left .pip:nth-child(4) {
+	grid-row: 3;
+	grid-column: 3;
 }
 
-/* Face 6 - Grid (2x3) */
-.face.back::before {
-	background-image:
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px),
-		radial-gradient(circle, black 6px, transparent 7px);
-	background-repeat: no-repeat;
-	background-position:
-		20% 20%,
-		80% 20%,
-		20% 50%,
-		80% 50%,
-		20% 80%,
-		80% 80%;
-	background-size: 12px 12px;
+.dice-face-bottom .pip:nth-child(1) {
+	grid-row: 1;
+	grid-column: 1;
+}
+.dice-face-bottom .pip:nth-child(2) {
+	grid-row: 1;
+	grid-column: 3;
+}
+.dice-face-bottom .pip:nth-child(3) {
+	grid-row: 2;
+	grid-column: 2;
+}
+.dice-face-bottom .pip:nth-child(4) {
+	grid-row: 3;
+	grid-column: 1;
+}
+.dice-face-bottom .pip:nth-child(5) {
+	grid-row: 3;
+	grid-column: 3;
+}
+
+.dice-face-back .pip:nth-child(1) {
+	grid-row: 1;
+	grid-column: 1;
+}
+.dice-face-back .pip:nth-child(2) {
+	grid-row: 1;
+	grid-column: 3;
+}
+.dice-face-back .pip:nth-child(3) {
+	grid-row: 2;
+	grid-column: 1;
+}
+.dice-face-back .pip:nth-child(4) {
+	grid-row: 2;
+	grid-column: 3;
+}
+.dice-face-back .pip:nth-child(5) {
+	grid-row: 3;
+	grid-column: 1;
+}
+.dice-face-back .pip:nth-child(6) {
+	grid-row: 3;
+	grid-column: 3;
+}
+
+/* Cube face transforms */
+.dice-face-front {
+	transform: rotateY(0deg) translateZ(var(--dice-half));
+}
+.dice-face-back {
+	transform: rotateY(180deg) translateZ(var(--dice-half));
+}
+.dice-face-top {
+	transform: rotateX(90deg) translateZ(var(--dice-half));
+}
+.dice-face-bottom {
+	transform: rotateX(-90deg) translateZ(var(--dice-half));
+}
+.dice-face-right {
+	transform: rotateY(90deg) translateZ(var(--dice-half));
+}
+.dice-face-left {
+	transform: rotateY(-90deg) translateZ(var(--dice-half));
 }
 
 /* ==============================
@@ -217,9 +285,6 @@
 	animation: floatShakeCrit 2.2s ease-out forwards;
 }
 
-/* ==============================
-   Floating Animations
-============================== */
 @keyframes floatUpDup {
 	0% {
 		opacity: 1;

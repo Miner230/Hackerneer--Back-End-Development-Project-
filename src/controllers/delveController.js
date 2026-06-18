@@ -3,6 +3,8 @@ const {
 	evaluateDelveResult,
 	processMonsterData,
 	formatDelveResults,
+	computePlayerCombatStats,
+	resolveCombatAction,
 } = require('../middleware/delveConfigs.js');
 
 // Read all monsters → stash in locals
@@ -69,6 +71,13 @@ module.exports.readDelveInstanceById = (req, res, next) => {
 				damage_reduction: formatted.damage_reduction,
 				roll_attempt: formatted.roll_attempt,
 				loot_shard_count: formatted.loot_shard_count,
+				player_health: formatted.player_health,
+				player_max_health: formatted.player_max_health,
+				player_damage_reduction: formatted.player_damage_reduction,
+				player_speed: formatted.player_speed,
+				monster_speed: formatted.monster_speed,
+				active_turn: formatted.active_turn,
+				attacks_remaining: formatted.attacks_remaining,
 				status: formatted.status,
 			};
 			next();
@@ -97,6 +106,7 @@ module.exports.createDelveInstance = (req, res, next) => {
 			modded_monster_name: result.modded_monster_name,
 			life_regen: result.life_regen,
 			damage_reduction: result.damage_reduction,
+			monster_speed: result.monster_speed,
 		});
 	} catch (error) {
 		console.error('Error in createDelveInstance:', error);
@@ -104,6 +114,7 @@ module.exports.createDelveInstance = (req, res, next) => {
 	}
 
 	const monsters_data = res.locals.selectedMonsters;
+	const playerStats = computePlayerCombatStats(res.locals.user_data[0]);
 	const data = {
 		user_id: res.locals.userId,
 		monsters_id: monsters_data.id,
@@ -115,6 +126,12 @@ module.exports.createDelveInstance = (req, res, next) => {
 		damage_reduction: res.locals.damage_reduction,
 		roll_attempt: res.locals.roll_attempt,
 		loot_shard_count: res.locals.loot_shard_count,
+		player_health: playerStats.player_health,
+		player_max_health: playerStats.player_max_health,
+		player_damage_reduction: playerStats.player_damage_reduction,
+		player_speed: playerStats.player_speed,
+		monster_speed: res.locals.monster_speed,
+		attacks_remaining: playerStats.player_speed,
 	};
 
 	const callback = (error, results) => {
@@ -161,6 +178,13 @@ module.exports.displayNewDelve = (req, res, next) => {
 			damage_reduction: first.damage_reduction,
 			roll_attempt: first.roll_attempt,
 			loot_shard_count: first.loot_shard_count,
+			player_health: first.player_health,
+			player_max_health: first.player_max_health,
+			player_damage_reduction: first.player_damage_reduction,
+			player_speed: first.player_speed,
+			monster_speed: first.monster_speed,
+			active_turn: first.active_turn,
+			attacks_remaining: first.attacks_remaining,
 			status: first.status,
 		};
 		next();
@@ -185,28 +209,36 @@ module.exports.insertDelveModifiers = (req, res, next) => {
 	model.insertDelveModifiers(data, callback);
 };
 
-// Update delve instance using latest roll (regen / damage reduction applied)
+// Update delve instance using latest roll and turn-based combat
 module.exports.updateDelveInstanceByUserId = (req, res, next) => {
-	let status = 'in progress';
-	const rollValue = res.locals.rollResult;
+	const instance = formatDelveResults(res.locals.instance_Data);
 
-	let updatedRollValue;
-	if (res.locals.instance_Data[0].damage_reduction == 0) {
-		updatedRollValue = rollValue - res.locals.instance_Data[0].life_regen;
-	} else {
-		updatedRollValue =
-			(rollValue * res.locals.instance_Data[0].damage_reduction) / 100 -
-			res.locals.instance_Data[0].life_regen;
+	const playerRoll = {
+		rollResult: res.locals.rollResult,
+		rollValue: res.locals.rollValue,
+		level_result_Modifier: res.locals.level_result_Modifier,
+		isCrit: res.locals.isCrit,
+		duplicationCount: res.locals.duplicationCount,
+		baseRolls: res.locals.baseRolls,
+		multiplier: res.locals.multiplier,
+	};
+
+	let combatResult;
+	try {
+		combatResult = resolveCombatAction(instance, playerRoll);
+	} catch (error) {
+		return res.status(400).json({ message: error.message });
 	}
 
-	if (updatedRollValue > res.locals.instance_Data[0].health || res.locals.instance_Data[0].roll_attempt == 1) {
-		status = 'completed';
-	}
+	res.locals.combatResult = combatResult;
 
 	const data = {
 		id: req.params.delveId,
-		roll_value: updatedRollValue,
-		status,
+		health: combatResult.health,
+		player_health: combatResult.playerHealth,
+		active_turn: combatResult.activeTurn,
+		attacks_remaining: combatResult.attacksRemaining,
+		status: combatResult.status,
 	};
 
 	const callback = (error, results) => {
@@ -236,30 +268,26 @@ module.exports.displayCurrentDelveInstance = (req, res, next) => {
 		}
 
 		const formattedDelve = formatDelveResults(results);
-		const {
-			rollResult,
-			rollValue,
-			level_result_Modifier,
-			isCrit,
-			duplicationCount,
-			baseRolls,
-			multiplier,
-		} = res.locals;
+		const playerRoll = {
+			rollResult: res.locals.rollResult,
+			rollValue: res.locals.rollValue,
+			level_result_Modifier: res.locals.level_result_Modifier,
+			isCrit: res.locals.isCrit,
+			duplicationCount: res.locals.duplicationCount,
+			baseRolls: res.locals.baseRolls,
+			multiplier: res.locals.multiplier,
+		};
 
-		if ([rollResult, rollValue, level_result_Modifier].some((v) => v === undefined)) {
+		if ([playerRoll.rollResult, playerRoll.rollValue, playerRoll.level_result_Modifier].some((v) => v === undefined)) {
 			res.locals.currentInstance = { message: 'Missing necessary data for delve evaluation' };
 			return next();
 		}
 
 		res.locals.currentInstance = evaluateDelveResult({
 			updated_delve_stats: [formattedDelve],
-			rollResult,
-			rollValue,
-			level_result_Modifier,
-			isCrit,
-			duplicationCount,
-			baseRolls,
-			multiplier,
+			playerRoll,
+			monsterTurn: res.locals.combatResult?.monsterTurn || null,
+			combatSummary: res.locals.combatResult || null,
 		});
 		next();
 	};
