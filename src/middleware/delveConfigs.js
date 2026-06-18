@@ -334,32 +334,66 @@ function selectMonsterRandomly(monsters, user_data) {
 	return selectedMonster; // Return the selected monster
 }
 
-// Function to randomly select monster modifiers
-function selectMonsterModifiersRandomly(modifiers, user_data) {
-	if (!modifiers || modifiers.length === 0) {
-		throw new Error('No monster modifiers found in database'); // Ensure modifiers data exists
+function computeMonsterLevel(user_data) {
+	const baseLevel = Math.max(1, Number(user_data?.level || 1));
+	const voidstones = Number(user_data?.voidstone_count || 0);
+	const randomFactor = Math.floor(Math.random() * 5);
+	return baseLevel + voidstones + randomFactor;
+}
+
+function pickWeightedModifier(modifiers) {
+	const pool = modifiers.filter((mod) => (mod.weight || 0) > 0);
+	if (!pool.length) return null;
+
+	const totalWeight = pool.reduce((sum, mod) => sum + mod.weight, 0);
+	let roll = Math.floor(Math.random() * totalWeight);
+
+	for (const mod of pool) {
+		roll -= mod.weight;
+		if (roll < 0) {
+			return {
+				id: mod.id,
+				name: mod.name,
+				description: mod.description,
+				weight: mod.weight,
+			};
+		}
 	}
+
+	const fallback = pool[pool.length - 1];
+	return {
+		id: fallback.id,
+		name: fallback.name,
+		description: fallback.description,
+		weight: fallback.weight,
+	};
+}
+
+// Roll monster modifiers using monster level. Supports duplicate stacks of the same modifier.
+function selectMonsterModifiersRandomly(modifiers, monsterLevel) {
+	if (!modifiers || modifiers.length === 0) {
+		throw new Error('No monster modifiers found in database');
+	}
+
+	const level = Math.max(1, Number(monsterLevel) || 1);
+	const guaranteedCount = Math.floor(level / 30);
+	const bonusRollSlots = Math.max(1, Math.floor(level / 15));
+	const rollSlots = guaranteedCount + bonusRollSlots;
+	const scaledChance = Math.min(0.95, 0.1 + level * 0.007);
 
 	const selectedModifiers = [];
 
-	// Ensure that modifiers are selected based on user data
-	modifiers.forEach((mod) => {
-		const totalWeight = 1000 - (user_data.level + user_data.voidstone_count); // Calculate total weight based on user stats
-		const weight = mod.weight || 0;
-		const roll = Math.floor(Math.random() * totalWeight); // Generate a random number based on total weight
-
-		if (roll < weight) {
-			selectedModifiers.push({
-				id: mod.id, 
-				name: mod.name, 
-				description: mod.description, 
-				weight: mod.weight, 
-			});
+	for (let slot = 0; slot < rollSlots; slot++) {
+		const isGuaranteed = slot < guaranteedCount;
+		if (!isGuaranteed && Math.random() >= scaledChance) {
+			continue;
 		}
-	});
 
-	// Ensure selectedModifiers is an array and return
-	return Array.isArray(selectedModifiers) ? selectedModifiers : [];
+		const pick = pickWeightedModifier(modifiers);
+		if (pick) selectedModifiers.push(pick);
+	}
+
+	return selectedModifiers;
 }
 
 // Apply modifier effects to monster stats
@@ -441,51 +475,42 @@ function computeMonsterLootStats(monsterLevel, selectedModifiers = []) {
 }
 
 // Scale the monster's stats based on user data and modifiers
-function scaleMonster(monster, user_data, selectedModifiers) {
-	const baseLevel = Math.max(1, Number(user_data?.level || 1)); // never below 1
-	const voidstones = Number(user_data?.voidstone_count || 0);
-	const randomFactor = Math.floor(Math.random() * 5); // 0 to 4
-
-	const monsterLevel = baseLevel + voidstones + randomFactor;
-	//random level in range of +3 -3 of user level
-	let monsterHealth = Math.floor(5 * Math.pow(monsterLevel + 1, 1.1)); // Initial health calculation
-	let rollAttempt = Math.floor(4 + Math.log2(monsterLevel + 1)); // Initial roll attempts calculation falls off harder at higher levels
-	let { itemQuantity, itemRarity } = computeMonsterLootStats(monsterLevel, selectedModifiers);
-	//cap monster health to prevent out of range errors
+function scaleMonster(monster, user_data, selectedModifiers, monsterLevel) {
+	const level = monsterLevel ?? computeMonsterLevel(user_data);
+	let monsterHealth = Math.floor(5 * Math.pow(level + 1, 1.1));
+	let rollAttempt = Math.floor(4 + Math.log2(level + 1));
+	let { itemQuantity, itemRarity } = computeMonsterLootStats(level, selectedModifiers);
 	monsterHealth = Math.min(monsterHealth, 999999999);
-	// Base monster name
 	let monsterName = monster.name;
 
-	// Call applyModifierEffects to get updated values
 	const effects = applyModifierEffects(
 		selectedModifiers,
 		user_data,
 		monsterName,
-		monsterLevel,
+		level,
 		monsterHealth,
 		rollAttempt,
 		itemQuantity,
 		itemRarity
 	);
 
-	// Get the updated values from applyModifierEffects
 	monsterName = effects.monsterName;
-	monsterHealth = effects.monsterHealth; 
-	rollAttempt = effects.rollAttempt; 
+	monsterHealth = effects.monsterHealth;
+	rollAttempt = effects.rollAttempt;
 	const lifeRegen = effects.lifeRegen;
 	const damageReduction = effects.damageReduction;
 	itemQuantity = effects.itemQuantity;
 	itemRarity = effects.itemRarity;
-	const monsterSpeed = computeMonsterSpeed(monsterLevel, selectedModifiers);
+	const monsterSpeed = computeMonsterSpeed(level, selectedModifiers);
 
 	return {
-		level: monsterLevel,
-		health: monsterHealth, 
-		rollAttempt: rollAttempt, 
+		level,
+		health: monsterHealth,
+		rollAttempt,
 		itemQuantity,
 		itemRarity,
-		moddedMonsterName: monsterName, 
-		life_regen: lifeRegen, 
+		moddedMonsterName: monsterName,
+		life_regen: lifeRegen,
 		damage_reduction: damageReduction,
 		monster_speed: monsterSpeed,
 	};
@@ -508,8 +533,9 @@ function processMonsterData(monster_data, modifier_data, user_data) {
 		// 1. Randomly Select Monster
 		const selectedMonster = selectMonsterRandomly(monster_data, user_data[0]);
 
-		// 2. Randomly Select Monster Modifiers
-		let selectedModifiers = selectMonsterModifiersRandomly(modifier_data, user_data[0]);
+		// 2. Roll monster level once, then pick modifiers from that level
+		const monsterLevel = computeMonsterLevel(user_data[0]);
+		let selectedModifiers = selectMonsterModifiersRandomly(modifier_data, monsterLevel);
 
 		// Ensure selectedModifiers is always an array
 		if (!Array.isArray(selectedModifiers)) {
@@ -519,7 +545,7 @@ function processMonsterData(monster_data, modifier_data, user_data) {
 		const selectedModifierIds = selectedModifiers.map((mod) => mod.id);
 
 		// 3. Apply Scaling Based on Player Level, Modifiers, and Items
-		const scaledMonster = scaleMonster(selectedMonster, user_data[0], selectedModifiers);
+		const scaledMonster = scaleMonster(selectedMonster, user_data[0], selectedModifiers, monsterLevel);
 
 		// Return the final result with updated stats
 		const result = {
@@ -585,6 +611,7 @@ function formatDelveResults(rows) {
 module.exports = {
 	evaluateDelveResult,
 	selectMonsterRandomly,
+	computeMonsterLevel,
 	selectMonsterModifiersRandomly,
 	scaleMonster,
 	computeMonsterLootStats,

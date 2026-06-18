@@ -143,9 +143,9 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   );
 
   CREATE TABLE delve_modifiers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     delve_instance_id INT NOT NULL,
-    modifier_id INT NOT NULL,
-    PRIMARY KEY (delve_instance_id, modifier_id)
+    modifier_id INT NOT NULL
   );
 
   CREATE TABLE loot (

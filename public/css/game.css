@@ -131,22 +131,46 @@ body.delve.delve-fullscreen .delve-arena {
 .combat-mod-tags {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.4rem;
-	justify-content: center;
-	margin-top: 0.35rem;
+	gap: 0.25rem 0.35rem;
+	justify-content: flex-start;
+	align-content: flex-start;
+	margin-top: 0.25rem;
 	min-height: 0;
+	width: 100%;
+	max-width: 100%;
+}
+
+.monster-hp-stack {
+	width: min(400px, 100%);
+	max-width: 400px;
+	margin-inline: auto;
+	min-width: 0;
+}
+
+.monster-hp-stack .combat-mod-tags {
+	margin-top: 0.3rem;
+}
+
+.monster-unit .combat-unit-hud {
+	width: min(400px, 100%);
+	max-width: 400px;
+	margin-inline: auto;
 }
 
 .mod-tag {
 	display: inline-block;
-	padding: 0.3rem 0.7rem;
-	border-radius: 8px;
-	font-size: 0.85rem;
+	padding: 0.2rem 0.45rem;
+	border-radius: 6px;
+	font-size: clamp(0.62rem, 2cqw, 0.78rem);
 	font-weight: 600;
-	line-height: 1.35;
+	line-height: 1.25;
 	color: #f0e4ff;
 	background: rgba(120, 80, 160, 0.35);
 	border: 1px solid rgba(180, 140, 220, 0.45);
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .delve-meta-badge {
@@ -168,7 +192,7 @@ body.delve.delve-fullscreen .delve-arena {
 }
 
 .combat-unit-health.monster-health-bar {
-	max-width: none;
+	max-width: 100%;
 	width: 100%;
 	height: 34px;
 	border: 2px solid #aaa;
@@ -287,11 +311,24 @@ body.delve.delve-fullscreen .delve-arena {
 	margin: 0;
 }
 
+.player-unit .combat-unit-hud > .monster-health-bar,
+.player-unit .combat-unit-hud > .combat-unit-hp-text {
+	width: min(400px, 100%);
+	max-width: 400px;
+	margin-inline: auto;
+}
+
 .combat-unit-hp-text {
 	margin: 0.2rem 0 0;
 	font-size: 0.62rem;
 	color: rgba(255, 255, 255, 0.72);
 	text-align: center;
+}
+
+.player-unit .combat-unit-hud {
+	width: min(400px, 100%);
+	max-width: 400px;
+	margin-inline: auto;
 }
 
 .combat-unit-desc {

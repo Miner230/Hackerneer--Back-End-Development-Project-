@@ -67,6 +67,56 @@ function formatCombatHp(value) {
 	return amount.toLocaleString('en-US');
 }
 
+function escapeHtml(text) {
+	return String(text)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
+function groupMonsterModifiers(mods = []) {
+	const grouped = new Map();
+
+	mods.forEach((mod) => {
+		const name = mod?.name || 'Unknown';
+		const existing = grouped.get(name);
+
+		if (existing) {
+			existing.count += 1;
+			return;
+		}
+
+		grouped.set(name, {
+			name,
+			count: 1,
+			description: mod?.description || name,
+		});
+	});
+
+	return Array.from(grouped.values()).sort(
+		(a, b) => b.count - a.count || a.name.localeCompare(b.name)
+	);
+}
+
+function renderMonsterModifierTags(modsEl, mods = []) {
+	if (!modsEl) return;
+
+	const grouped = groupMonsterModifiers(mods);
+	if (!grouped.length) {
+		modsEl.innerHTML = '';
+		return;
+	}
+
+	modsEl.innerHTML = grouped
+		.map((mod) => {
+			const label = mod.count > 1 ? `${mod.name} ×${mod.count}` : mod.name;
+			const stackNote = mod.count > 1 ? ` (${mod.count} stacks)` : '';
+			return `<span class="mod-tag" title="${escapeHtml(mod.description + stackNote)}">${escapeHtml(label)}</span>`;
+		})
+		.join('');
+}
+
 function getMonsterStartHealth() {
 	const delveId = sessionStorage.getItem('delveID');
 	const stored = parseInt(sessionStorage.getItem(getMonsterStartHealthKey(delveId)), 10);
@@ -208,16 +258,10 @@ function loadDelveInfo() {
 		}
 
 		const modsEl = document.getElementById('monsterMods');
-		if (modsEl) {
-			const mods = Array.isArray(delve.modifiers) ? delve.modifiers : [];
-			if (mods.length > 0) {
-				modsEl.innerHTML = mods
-					.map((mod) => `<span class="mod-tag" title="${mod.description || mod.name}">${mod.name}</span>`)
-					.join('');
-			} else {
-				modsEl.innerHTML = '';
-			}
-		}
+		renderMonsterModifierTags(
+			modsEl,
+			Array.isArray(delve.modifiers) ? delve.modifiers : []
+		);
 
 		updateTurnUI(delve);
 	};
