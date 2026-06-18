@@ -24,51 +24,67 @@ function diceRoll(row) {
 		return null; // Fallback (should not occur with valid weights)
 	}
 
-	// Store results of all rolls
-	const detailedRolls = [];
+	function rollDieWithCrit() {
+		const face = rollOnce();
+		if (face === null) return null;
 
-	// Roll the first base value
-	const baseRoll = rollOnce();
-	if (baseRoll === null) return null;
-	detailedRolls.push(baseRoll);
+		const critRoll = Math.floor(Math.random() * 100);
+		const isCrit = critRoll < row.crit_chance;
+		const multiplier = isCrit ? row.crit_power / 100 : 1;
+
+		return {
+			face,
+			isCrit,
+			multiplier,
+			scoredValue: Math.floor(face * multiplier),
+		};
+	}
+
+	const rollOutcomes = [];
+
+	// Roll the first base value (with its own crit check)
+	const baseOutcome = rollDieWithCrit();
+	if (baseOutcome === null) return null;
+	rollOutcomes.push(baseOutcome);
 
 	// Setup duplication parameters
 	const duplicationChance = Math.min(row.duplication_chance, 100);
 	const duplicationNumber = row.duplication_number;
 
-	// Attempt duplication rolls based on chance and number allowed
+	// Each duplicate roll also rolls for crit independently
 	for (let i = 0; i < duplicationNumber; i++) {
 		const roll = Math.floor(Math.random() * 100);
 		if (roll < duplicationChance) {
-			const extraRoll = rollOnce();
-			if (extraRoll !== null) detailedRolls.push(extraRoll);
+			const extraOutcome = rollDieWithCrit();
+			if (extraOutcome !== null) rollOutcomes.push(extraOutcome);
 		}
 	}
 
-	// Calculate the raw sum of all rolled values
-	const rawRollValue = detailedRolls.reduce((a, b) => a + b, 0);
+	const baseRolls = rollOutcomes.map((outcome) => outcome.face);
+	const critPerRoll = rollOutcomes.map((outcome) => outcome.isCrit);
+
+	// Calculate the raw sum of all rolled face values
+	const rawRollValue = baseRolls.reduce((a, b) => a + b, 0);
 
 	// Apply level modifier (level starts at 1, so subtract 1)
 	const levelModifier = row.level - 1;
 
-	// Check for critical hit and apply multiplier
-	const critRoll = Math.floor(Math.random() * 100);
-	const isCrit = critRoll < row.crit_chance;
+	const scoredRollValue = rollOutcomes.reduce((sum, outcome) => sum + outcome.scoredValue, 0);
+	const finalRoll = scoredRollValue + levelModifier;
+
+	const isCrit = critPerRoll.some(Boolean);
 	const multiplier = isCrit ? row.crit_power / 100 : 1;
-
-
-	// Final calculated roll value after modifiers
-	const finalRoll = Math.floor((rawRollValue + levelModifier) * multiplier);
 
 	// Return detailed roll breakdown
 	return {
-		rolls: detailedRolls, // All rolls as individual numbers
-		baseRolls: detailedRolls, // Same as rolls here
-		duplicationCount: detailedRolls.length - 1,
+		rolls: baseRolls,
+		baseRolls,
+		critPerRoll,
+		duplicationCount: baseRolls.length - 1,
 		rollValue: rawRollValue,
 		rollResult: finalRoll,
-		isCrit: isCrit,
-		multiplier: multiplier,
+		isCrit,
+		multiplier,
 		level_result_Modifier: levelModifier,
 	};
 }

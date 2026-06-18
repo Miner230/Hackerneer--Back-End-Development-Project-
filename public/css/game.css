@@ -1089,8 +1089,20 @@ body.delve.delve-fullscreen .delve-arena {
 	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
+.damage-float--crit {
+	color: #ff3838;
+	font-size: clamp(1.9rem, 9cqw, 3.2rem);
+	font-weight: 900;
+	animation: damageFloatCrit 2.2s ease-out forwards;
+	text-shadow: 0 0 12px rgba(255, 56, 56, 0.65), 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
 .player-damage-float {
 	color: #ff9f5a;
+}
+
+.player-damage-float.damage-float--crit {
+	color: #ff5a5a;
 }
 
 .monster-death {
@@ -1107,6 +1119,35 @@ body.delve.delve-fullscreen .delve-arena {
 	100% {
 		opacity: 0;
 		transform: translateY(-40px);
+	}
+}
+
+@keyframes damageFloatCrit {
+	0% {
+		opacity: 1;
+		transform: translateY(0) rotate(0deg) scale(1);
+	}
+	10% {
+		transform: translateY(-4px) rotate(-4deg) scale(1.08);
+	}
+	20% {
+		transform: translateY(-8px) rotate(4deg) scale(1.12);
+	}
+	30% {
+		transform: translateY(-12px) rotate(-3deg) scale(1.1);
+	}
+	40% {
+		transform: translateY(-16px) rotate(3deg) scale(1.08);
+	}
+	60% {
+		transform: translateY(-24px) rotate(-2deg) scale(1.05);
+	}
+	80% {
+		transform: translateY(-32px) rotate(1deg) scale(1.02);
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-44px) rotate(0deg) scale(1);
 	}
 }
 

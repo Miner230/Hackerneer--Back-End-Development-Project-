@@ -595,6 +595,16 @@ function splitDamageAcrossRolls(baseRolls, totalDamage) {
 	});
 }
 
+function resolveRollCrit(attackEffects, rollIndex) {
+	if (!attackEffects) return false;
+
+	if (Array.isArray(attackEffects.critPerRoll)) {
+		return Boolean(attackEffects.critPerRoll[rollIndex]);
+	}
+
+	return Boolean(attackEffects.isCrit);
+}
+
 async function animateDiceRollSequence(rolls = [], options = {}) {
 	const {
 		enableRollAfter = true,
@@ -645,6 +655,7 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 	try {
 
 		let runningMonsterHealth = startingMonsterHealth;
+		let loggedCritEffect = false;
 
 		for (let i = 0; i < rolls.length; i++) {
 
@@ -653,27 +664,40 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 			await rollSingleDie(face);
 
 			const rollDamage = Array.isArray(rollDamages) ? rollDamages[i] : 0;
+			const isRollCrit = resolveRollCrit(attackEffects, i);
+			const isDuplicateRoll = i > 0;
 
 			if (rollDamage > 0 && damageTarget) {
-				const hpBeforeHit = runningMonsterHealth;
-				showDamage(rollDamage, damageTarget);
-
-				if (
+				const monsterHpBeforeHit =
 					damageTarget === 'monster' &&
 					runningMonsterHealth !== null &&
 					runningMonsterHealth !== undefined
-				) {
+						? runningMonsterHealth
+						: null;
+				const canShowHitEffects =
+					damageTarget === 'player' ? true : monsterHpBeforeHit > 0;
+
+				showDamage(rollDamage, damageTarget, { isCrit: isRollCrit });
+
+				if (damageTarget === 'monster' && monsterHpBeforeHit !== null) {
 					runningMonsterHealth -= rollDamage;
 					updateMonsterHealthUI(runningMonsterHealth);
+				}
 
-					if (attackEffects?.target === 'monster') {
-						if (attackEffects.isCrit && i === 0) {
-							showCritEffect();
-						}
-						if (i > 0 && hpBeforeHit > 0) {
-							showDuplicateEffect();
-						}
+				if (attackEffects && canShowHitEffects) {
+					if (isRollCrit) {
+						showCritEffect({ log: !loggedCritEffect });
+						loggedCritEffect = true;
 					}
+					if (isDuplicateRoll) {
+						showDuplicateEffect();
+					}
+				}
+			} else if (attackEffects && isRollCrit) {
+				showCritEffect({ log: !loggedCritEffect });
+				loggedCritEffect = true;
+				if (isDuplicateRoll) {
+					showDuplicateEffect();
 				}
 			}
 
@@ -713,6 +737,10 @@ async function animateMonsterTurn(monsterTurn, stats, startingPlayerHealth) {
 			enableRollAfter: false,
 			rollDamages,
 			damageTarget: 'player',
+			attackEffects: {
+				critPerRoll: attack.critPerRoll,
+				isCrit: Boolean(attack.isCrit),
+			},
 		});
 
 		runningPlayerHealth = Math.max(0, runningPlayerHealth - (attack.damageDealt ?? 0));
@@ -767,7 +795,7 @@ function handleDelveActionResponse(status, data) {
 				damageTarget: 'monster',
 				startingMonsterHealth: monsterHealthBefore,
 				attackEffects: {
-					target: 'monster',
+					critPerRoll: raw?.critPerRoll,
 					isCrit: Boolean(raw?.isCrit),
 				},
 			});
@@ -852,7 +880,8 @@ function triggerDelveAction() {
 
 
 
-function showDamage(damageAmount, target = 'monster') {
+function showDamage(damageAmount, target = 'monster', options = {}) {
+	const { isCrit = false } = options;
 
 	if (target === 'player') {
 
@@ -874,7 +903,9 @@ function showDamage(damageAmount, target = 'monster') {
 
 		const damage = document.createElement('div');
 
-		damage.className = 'damage-float player-damage-float';
+		damage.className = isCrit
+			? 'damage-float player-damage-float damage-float--crit'
+			: 'damage-float player-damage-float';
 
 		damage.textContent = `-${damageAmount}`;
 
@@ -918,7 +949,7 @@ function showDamage(damageAmount, target = 'monster') {
 
 	const damage = document.createElement('div');
 
-	damage.className = 'damage-float';
+	damage.className = isCrit ? 'damage-float damage-float--crit' : 'damage-float';
 
 	damage.textContent = `-${damageAmount}`;
 
@@ -980,7 +1011,7 @@ function setNextDelveButtonText(outcome) {
 
 
 
-function showCritEffect() {
+function showCritEffect({ log = true } = {}) {
 	const container = document.querySelector('.dice-dock');
 	if (!container) return;
 
@@ -988,7 +1019,7 @@ function showCritEffect() {
 	crit.className = 'crit-float';
 	crit.textContent = 'CRITICAL! ☠︎︎';
 	container.appendChild(crit);
-	appendCombatLog('Critical hit!', 'crit');
+	if (log) appendCombatLog('Critical hit!', 'crit');
 	setTimeout(() => crit.remove(), 2500);
 }
 

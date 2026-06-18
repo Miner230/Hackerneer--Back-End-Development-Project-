@@ -91,14 +91,25 @@ function applyMonsterDamageFromPlayerRoll(rollResult, monsterDR, lifeRegen) {
 }
 
 function formatRollDescription(roll, actor = 'You') {
-	const { rollResult, rollValue, level_result_Modifier, isCrit, multiplier, duplicationCount, baseRolls } =
-		roll;
+	const {
+		rollResult,
+		rollValue,
+		level_result_Modifier,
+		isCrit,
+		critPerRoll,
+		duplicationCount,
+		baseRolls,
+	} = roll;
+	const critCount = Array.isArray(critPerRoll) ? critPerRoll.filter(Boolean).length : isCrit ? 1 : 0;
 	let description = '';
 
-	if (level_result_Modifier > 0 && isCrit) {
-		description = `Critical Hit! ${actor} rolled: ${rollResult} ((${rollValue} + ${level_result_Modifier}) × ${multiplier})`;
-	} else if (isCrit) {
-		description = `Critical Hit! ${actor} rolled: ${rollResult} (${rollValue} × ${multiplier})`;
+	if (critCount > 0) {
+		const critLabel = critCount === 1 ? 'Critical Hit!' : `Critical Hit! (${critCount} rolls)`;
+		if (level_result_Modifier > 0) {
+			description = `${critLabel} ${actor} rolled: ${rollResult} (${rollValue} + ${level_result_Modifier} level bonus)`;
+		} else {
+			description = `${critLabel} ${actor} rolled: ${rollResult}`;
+		}
 	} else if (level_result_Modifier > 0) {
 		description = `${actor} rolled: ${rollResult} (${rollValue} + ${level_result_Modifier} level bonus)`;
 	} else {
@@ -279,6 +290,7 @@ function evaluateDelveResult({
 			rollValue: playerRoll.rollValue,
 			level_result_Modifier: playerRoll.level_result_Modifier,
 			isCrit: playerRoll.isCrit,
+			critPerRoll: playerRoll.critPerRoll,
 			duplicationCount: playerRoll.duplicationCount,
 			baseRolls: playerRoll.baseRolls,
 			multiplier: playerRoll.multiplier,
