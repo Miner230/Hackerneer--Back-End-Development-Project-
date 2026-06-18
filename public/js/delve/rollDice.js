@@ -43,6 +43,11 @@ const ROLL_PAUSE_MS = 400;
 const ROLL_DURATION_MS = 1000;
 
 const ENEMY_TURN_COOLDOWN_MS = 1000;
+const LOOT_DROP_STAGGER_MS = 100;
+const LOOT_BURST_ANIM_MS = 520;
+const END_OVERLAY_BASE_DELAY_MS = 1800;
+const LOOT_ITEM_IMG_BASE =
+	'https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L';
 
 
 
@@ -74,7 +79,7 @@ function clearCombatLog() {
 	if (!combatLog) return;
 
 	combatLog.innerHTML = '';
-
+	clearMonsterLootDrops();
 }
 
 
@@ -95,6 +100,91 @@ function scheduleCombatLogPeek(entry) {
 		},
 		{ once: true }
 	);
+}
+
+function normalizeRarityKey(rarity) {
+	const key = (rarity || 'common').toLowerCase();
+	const tiers = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+	return tiers.includes(key) ? key : 'common';
+}
+
+function appendLootDropLog(message, rarity) {
+	appendCombatLog(message, `loot-${normalizeRarityKey(rarity)}`);
+}
+
+function flattenLootDrops(items) {
+	const drops = [];
+
+	(items || []).forEach((item) => {
+		const count = Math.max(1, Number(item.quantity) || 1);
+		for (let i = 0; i < count; i++) {
+			drops.push(item);
+		}
+	});
+
+	return drops;
+}
+
+function clearMonsterLootDrops() {
+	const layer = document.getElementById('monsterLootLayer');
+	if (layer) layer.innerHTML = '';
+}
+
+function spawnMonsterLootDrop(item, index, total) {
+	const layer = document.getElementById('monsterLootLayer');
+	if (!layer || !item?.id) return;
+
+	const rarityKey = normalizeRarityKey(item.rarity);
+	const drop = document.createElement('div');
+	drop.className = `monster-loot-drop monster-loot-drop--${rarityKey}`;
+
+	const img = document.createElement('img');
+	img.src = `${LOOT_ITEM_IMG_BASE}${item.id}.png`;
+	img.alt = item.name || 'Loot';
+	img.className = 'monster-loot-drop-img';
+	img.loading = 'eager';
+	drop.appendChild(img);
+
+	const angle = Math.random() * Math.PI * 2;
+	const horizontalReach = 36 + Math.random() * 62;
+	const apexLift = -(52 + Math.random() * 38);
+	const indexSpread = (index - (total - 1) / 2) * Math.min(22, 200 / Math.max(total, 1));
+	const landX = Math.cos(angle) * horizontalReach + indexSpread + (Math.random() * 12 - 6);
+	const landY = 38 + Math.random() * 22;
+	const apexX = Math.cos(angle) * (horizontalReach * 0.48) + indexSpread * 0.35;
+	const apexY = apexLift;
+	const spin = Math.random() * 50 - 25;
+
+	drop.style.setProperty('--apex-x', `${apexX.toFixed(1)}px`);
+	drop.style.setProperty('--apex-y', `${apexY.toFixed(1)}px`);
+	drop.style.setProperty('--land-x', `${landX.toFixed(1)}px`);
+	drop.style.setProperty('--land-y', `${landY.toFixed(1)}px`);
+	drop.style.setProperty('--spin-deg', `${spin.toFixed(1)}deg`);
+	drop.style.left = '50%';
+	drop.style.top = '40%';
+
+	layer.appendChild(drop);
+}
+
+function logLootDrops(items) {
+	const drops = flattenLootDrops(items);
+
+	if (!drops.length) {
+		return Promise.resolve();
+	}
+
+	return new Promise((resolve) => {
+		drops.forEach((item, index) => {
+			window.setTimeout(() => {
+				appendLootDropLog(`Dropped: ${item.name} (${item.rarity})`, item.rarity);
+				spawnMonsterLootDrop(item, index, drops.length);
+
+				if (index === drops.length - 1) {
+					window.setTimeout(resolve, LOOT_BURST_ANIM_MS);
+				}
+			}, index * LOOT_DROP_STAGGER_MS);
+		});
+	});
 }
 
 function appendCombatLog(message, type = 'system') {
@@ -150,17 +240,39 @@ function getStatsForMonsterAttackPhase(stats, playerHealth) {
 	};
 }
 
-function logPlayerAttackOutcome(data) {
+function stripDuplicateRollDetails(summary) {
+	if (!summary) return summary;
+
+	return summary
+		.replace(/\s*— Duplicated \d+ (time|times)/gi, '')
+		.replace(/\s*\(Dice rolls:[^)]*\)/gi, '')
+		.trim();
+}
+
+function logPlayerAttackOutcome(data, { monsterDead = false } = {}) {
 	const instance = getCombatInstance(data);
 	const raw = instance?.raw || data?.raw;
-	const rolledSummary = instance?.rolled || data?.rolled;
+	let rolledSummary = instance?.rolled || data?.rolled;
+
+	if (monsterDead && rolledSummary) {
+		rolledSummary = stripDuplicateRollDetails(rolledSummary);
+	}
 
 	if (rolledSummary) {
 		appendCombatLog(rolledSummary, raw?.isCrit ? 'crit' : 'roll');
 	}
 
-	if (raw?.rollResult) {
-		appendCombatLog(`You dealt ${raw.rollResult} damage to the monster.`, 'damage');
+	const damageDealt = raw?.playerDamageToMonster;
+	if (damageDealt !== undefined && damageDealt !== null) {
+		const rolledDamage = raw?.rollResult;
+		if (rolledDamage !== undefined && rolledDamage !== damageDealt) {
+			appendCombatLog(
+				`Rolled ${rolledDamage} — ${damageDealt} damage applied after DR/regen.`,
+				'damage'
+			);
+		} else {
+			appendCombatLog(`You dealt ${damageDealt} damage to the monster.`, 'damage');
+		}
 	}
 }
 
@@ -207,11 +319,10 @@ function logTurnSummary(data) {
 	}
 
 	if (rewards?.type === 'loot_drop' && rewards.items?.length) {
-		rewards.items.forEach((item) => {
-			const qty = item.quantity > 1 ? ` x${item.quantity}` : '';
-			appendCombatLog(`Dropped: ${item.name}${qty} (${item.rarity})`, 'loot');
-		});
+		return logLootDrops(rewards.items);
 	}
+
+	return Promise.resolve();
 }
 
 function logRollOutcome(data) {
@@ -490,6 +601,8 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 		showPrompt = false,
 		rollDamages = null,
 		damageTarget = null,
+		startingMonsterHealth = null,
+		attackEffects = null,
 	} = options;
 
 
@@ -531,14 +644,37 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 
 	try {
 
+		let runningMonsterHealth = startingMonsterHealth;
+
 		for (let i = 0; i < rolls.length; i++) {
 
 			const face = Math.min(6, Math.max(1, Number(rolls[i]) || 1));
 
 			await rollSingleDie(face);
 
-			if (Array.isArray(rollDamages) && damageTarget && rollDamages[i] > 0) {
-				showDamage(rollDamages[i], damageTarget);
+			const rollDamage = Array.isArray(rollDamages) ? rollDamages[i] : 0;
+
+			if (rollDamage > 0 && damageTarget) {
+				const hpBeforeHit = runningMonsterHealth;
+				showDamage(rollDamage, damageTarget);
+
+				if (
+					damageTarget === 'monster' &&
+					runningMonsterHealth !== null &&
+					runningMonsterHealth !== undefined
+				) {
+					runningMonsterHealth -= rollDamage;
+					updateMonsterHealthUI(runningMonsterHealth);
+
+					if (attackEffects?.target === 'monster') {
+						if (attackEffects.isCrit && i === 0) {
+							showCritEffect();
+						}
+						if (i > 0 && hpBeforeHit > 0) {
+							showDuplicateEffect();
+						}
+					}
+				}
 			}
 
 			if (i < rolls.length - 1) await delay(ROLL_PAUSE_MS);
@@ -620,12 +756,20 @@ function handleDelveActionResponse(status, data) {
 
 	(async () => {
 		try {
-			const rollDamages = splitDamageAcrossRolls(rolls, raw?.rollResult ?? 0);
+			const monsterHealthBefore = resolveMonsterHealthBeforeAttack(stats, raw);
+			const postHealth = Math.max(0, stats?.health ?? 0);
+			const totalMonsterDamage = Math.max(0, monsterHealthBefore - postHealth);
+			const rollDamages = splitDamageAcrossRolls(rolls, totalMonsterDamage);
 
 			await animateDiceRollSequence(rolls, {
 				enableRollAfter: false,
 				rollDamages,
 				damageTarget: 'monster',
+				startingMonsterHealth: monsterHealthBefore,
+				attackEffects: {
+					target: 'monster',
+					isCrit: Boolean(raw?.isCrit),
+				},
 			});
 
 			if (stats?.health !== undefined) {
@@ -637,12 +781,9 @@ function handleDelveActionResponse(status, data) {
 				updatePlayerUI(playerPhaseStats);
 			}
 
-			logPlayerAttackOutcome(data);
+			const monsterDead = (stats?.health ?? 1) <= 0;
 
-			showRollEffects({
-				duplicationCount: raw.duplicationCount || 0,
-				isCrit: raw.isCrit || false,
-			});
+			logPlayerAttackOutcome(data, { monsterDead });
 
 			if (monsterTurn?.attacks?.length) {
 				setTurnIndicator("Monster's turn incoming...", 'waiting');
@@ -655,29 +796,29 @@ function handleDelveActionResponse(status, data) {
 				updatePlayerUI(stats);
 			}
 
-			logTurnSummary(data);
+			const lootDropWait = logTurnSummary(data);
 
 			if (stats?.status === 'completed') {
 				if (resultMsg.toLowerCase().includes('success')) {
 					playMonsterDeathAnimation();
 				}
 
-				setTimeout(() => {
-					const overlay = document.getElementById('delveEndOverlay');
-					let outcome = 'default';
+				await Promise.all([lootDropWait, delay(END_OVERLAY_BASE_DELAY_MS)]);
 
-					if (resultMsg.toLowerCase().includes('success')) outcome = 'win';
-					else if (resultMsg.toLowerCase().includes('slain')) outcome = 'lose';
+				const overlay = document.getElementById('delveEndOverlay');
+				let outcome = 'default';
 
-					setNextDelveButtonText(outcome);
+				if (resultMsg.toLowerCase().includes('success')) outcome = 'win';
+				else if (resultMsg.toLowerCase().includes('slain')) outcome = 'lose';
 
-					if (overlay) overlay.classList.remove('d-none');
+				setNextDelveButtonText(outcome);
 
-					if (rollBtn) {
-						rollBtn.disabled = true;
-						rollBtn.classList.add('disabled');
-					}
-				}, 1800);
+				if (overlay) overlay.classList.remove('d-none');
+
+				if (rollBtn) {
+					rollBtn.disabled = true;
+					rollBtn.classList.add('disabled');
+				}
 			}
 		} finally {
 			if (stats?.status !== 'completed') {
@@ -839,61 +980,35 @@ function setNextDelveButtonText(outcome) {
 
 
 
+function showCritEffect() {
+	const container = document.querySelector('.dice-dock');
+	if (!container) return;
+
+	const crit = document.createElement('div');
+	crit.className = 'crit-float';
+	crit.textContent = 'CRITICAL! ☠︎︎';
+	container.appendChild(crit);
+	appendCombatLog('Critical hit!', 'crit');
+	setTimeout(() => crit.remove(), 2500);
+}
+
+function showDuplicateEffect() {
+	const container = document.querySelector('.dice-dock');
+	if (!container) return;
+
+	const duplicate = document.createElement('div');
+	duplicate.className = 'dup-float';
+	duplicate.textContent = 'DUPLICATE! ✵';
+	container.appendChild(duplicate);
+	appendCombatLog('Duplicate roll triggered!', 'crit');
+	setTimeout(() => duplicate.remove(), 2500);
+}
+
 function playMonsterDeathAnimation() {
 
 	const monsterImg = document.getElementById('monsterImage');
 
 	if (monsterImg) monsterImg.classList.add('monster-death');
-
-}
-
-
-
-function showRollEffects({ duplicationCount = 0, isCrit = false }) {
-
-	const container = document.querySelector('.dice-dock');
-
-	if (!container) return;
-
-
-
-	for (let i = 0; i < duplicationCount; i++) {
-
-		setTimeout(() => {
-
-			const duplicate = document.createElement('div');
-
-			duplicate.className = 'dup-float';
-
-			duplicate.textContent = 'DUPLICATE! ✵';
-
-			container.appendChild(duplicate);
-
-			appendCombatLog('Duplicate roll triggered!', 'crit');
-
-			setTimeout(() => duplicate.remove(), 2500);
-
-		}, i * 400);
-
-	}
-
-
-
-	if (isCrit) {
-
-		const crit = document.createElement('div');
-
-		crit.className = 'crit-float';
-
-		crit.textContent = 'CRITICAL! ☠︎︎';
-
-		container.appendChild(crit);
-
-		appendCombatLog('Critical hit!', 'crit');
-
-		setTimeout(() => crit.remove(), 3000);
-
-	}
 
 }
 

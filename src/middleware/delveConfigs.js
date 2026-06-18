@@ -86,10 +86,8 @@ function applyDamageReduction(rawDamage, reductionPercent) {
 }
 
 function applyMonsterDamageFromPlayerRoll(rollResult, monsterDR, lifeRegen) {
-	if (monsterDR == 0) {
-		return rollResult - lifeRegen;
-	}
-	return Math.floor((rollResult * monsterDR) / 100) - lifeRegen;
+	const afterReduction = applyDamageReduction(rollResult, monsterDR);
+	return Math.max(0, afterReduction - (lifeRegen || 0));
 }
 
 function formatRollDescription(roll, actor = 'You') {
@@ -155,13 +153,17 @@ function resolveCombatAction(instance, playerRoll) {
 	let status = 'in progress';
 	let monsterTurn = null;
 
-	const playerDamageToMonster = applyMonsterDamageFromPlayerRoll(
+	const rawDamageToMonster = applyMonsterDamageFromPlayerRoll(
 		playerRoll.rollResult,
 		instance.damage_reduction,
 		instance.life_regen
 	);
+	const playerDamageToMonster = rawDamageToMonster;
 
-	health = Math.max(0, health - playerDamageToMonster);
+	health = health - playerDamageToMonster;
+	if (health <= 0) {
+		health = 0;
+	}
 	attacksRemaining = Math.max(0, attacksRemaining - 1);
 
 	if (health <= 0) {

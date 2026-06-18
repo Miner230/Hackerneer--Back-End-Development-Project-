@@ -58,9 +58,41 @@ function updatePlayerUI(delve) {
 	updateTurnUI(delve);
 }
 
+function getMonsterStartHealthKey(delveId) {
+	return delveId ? `monsterStartHealth_${delveId}` : 'monsterStartHealth';
+}
+
+function formatCombatHp(value) {
+	const amount = Math.round(Number(value) || 0);
+	return amount.toLocaleString('en-US');
+}
+
+function getMonsterStartHealth() {
+	const delveId = sessionStorage.getItem('delveID');
+	const stored = parseInt(sessionStorage.getItem(getMonsterStartHealthKey(delveId)), 10);
+	return Number.isFinite(stored) && stored > 0 ? stored : null;
+}
+
+function resolveMonsterHealthBeforeAttack(stats, raw) {
+	const prev = parseInt(sessionStorage.getItem('delvePrevHealth'), 10);
+	const post = stats?.health ?? 0;
+
+	if (Number.isFinite(prev) && prev >= post) {
+		return prev;
+	}
+
+	const damageDealt = Number(raw?.playerDamageToMonster) || 0;
+	return post + damageDealt;
+}
+
 function updateMonsterHealthUI(currentHealth) {
-	const maxHealth = parseInt(sessionStorage.getItem('maxHealth')) || 100;
-	let percent = Math.floor((currentHealth / maxHealth) * 100);
+	const hp = Math.round(Number(currentHealth) || 0);
+	const startHealth = getMonsterStartHealth();
+
+	let percent = 100;
+	if (startHealth && startHealth > 0) {
+		percent = Math.floor((hp / startHealth) * 100);
+	}
 	percent = Math.min(100, Math.max(0, percent));
 
 	const healthFill = document.getElementById('health-fill');
@@ -72,9 +104,9 @@ function updateMonsterHealthUI(currentHealth) {
 		healthFill.style.opacity = percent === 0 ? '0' : '1';
 	}
 	if (healthLabel) healthLabel.textContent = `HP: ${percent}%`;
-	if (hpLabel) hpLabel.textContent = `HP ${currentHealth}`;
+	if (hpLabel) hpLabel.textContent = `HP ${formatCombatHp(hp)}`;
 
-	sessionStorage.setItem('delvePrevHealth', String(currentHealth));
+	sessionStorage.setItem('delvePrevHealth', String(hp));
 }
 
 //load delve info and render ui
@@ -109,13 +141,7 @@ function loadDelveInfo() {
 			monsterDesc = delve.monster?.description || '';
 		}
 
-		//save max health once
-		if (delve.health && !sessionStorage.getItem('maxHealth')) {
-			sessionStorage.setItem('maxHealth', delve.health);
-		}
-		if (delve.player_max_health && !sessionStorage.getItem('maxPlayerHealth')) {
-			sessionStorage.setItem('maxPlayerHealth', delve.player_max_health);
-		}
+		const currentHealth = delve.health ?? 0;
 
 		//save delve id
 		if (delve.id) sessionStorage.setItem('delveID', delve.id);
@@ -137,14 +163,18 @@ function loadDelveInfo() {
 		}
 		if (descEl) descEl.textContent = monsterDesc;
 
-		//update monster health bar
-		const currentHealth = delve.health || 0;
-
 		updatePlayerUI(delve);
+
+		if (delve.player_max_health && !sessionStorage.getItem('maxPlayerHealth')) {
+			sessionStorage.setItem('maxPlayerHealth', delve.player_max_health);
+		}
 
 		const delveId = delve.id;
 		const loggedDelveId = sessionStorage.getItem('delveLogInitialized');
 		if (delveId && loggedDelveId !== String(delveId)) {
+			if (currentHealth > 0) {
+				sessionStorage.setItem(getMonsterStartHealthKey(String(delveId)), String(currentHealth));
+			}
 			appendCombatLog(`${monsterName} (Lv. ${delve.level || '?'}) appears!`, 'encounter');
 			appendCombatLog(
 				`Your SPD ${delve.player_speed || '?'} · Monster SPD ${delve.monster_speed || '?'} · Your DR ${delve.player_damage_reduction || 0}%`,
@@ -212,8 +242,8 @@ function startDelve() {
 		const mainContent = document.getElementById('mainContent');
 		if (mainContent) mainContent.classList.remove('d-none');
 
-		sessionStorage.removeItem('delveID');
 		sessionStorage.removeItem('maxHealth');
+		sessionStorage.removeItem('delveID');
 		sessionStorage.removeItem('maxPlayerHealth');
 		sessionStorage.removeItem('delveLogInitialized');
 		sessionStorage.removeItem('delvePrevHealth');
