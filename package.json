@@ -13,6 +13,7 @@
 		"migrate_monster_modifiers": "node src/configs/migrateMonsterModifiers.js",
 		"migrate_remove_no_of_rolls_loot": "node src/configs/migrateRemoveNoOfRollsLoot.js",
 		"migrate_monster_loot_drops": "node src/configs/migrateMonsterLootDrops.js",
+		"migrate_all": "npm run migrate_delve_combat && npm run migrate_delve_speed && npm run migrate_monster_modifiers && npm run migrate_remove_no_of_rolls_loot && npm run migrate_monster_loot_drops",
 		"format": "prettier --write ."
 	},
 	"author": "Angus Kaile Wight",
