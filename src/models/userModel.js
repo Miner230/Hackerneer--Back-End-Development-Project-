@@ -91,14 +91,14 @@ module.exports.updateUserRep = (data, callback) => {
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
-// Increment completed delves and add loot shards
+// Increment completed delves after a victory
 module.exports.incrementUserStats = (data, callback) => {
 	const SQLSTATMENT = `
         UPDATE user
-        SET number_of_delve_completed = number_of_delve_completed + 1, loot_shard = loot_shard + ?
+        SET number_of_delve_completed = number_of_delve_completed + 1
         WHERE id = ?;
     `;
-	const VALUES = [data.loot_shard_count, data.userId];
+	const VALUES = [data.userId];
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 

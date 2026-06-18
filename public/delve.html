@@ -119,6 +119,8 @@
 									<div class="combat-unit-meta" id="monsterMeta">
 										<span id="monsterLevel" class="delve-meta-badge"></span>
 										<span id="monsterSpeed" class="delve-meta-badge"></span>
+										<span id="monsterItemQuantity" class="delve-meta-badge"></span>
+										<span id="monsterItemRarity" class="delve-meta-badge"></span>
 										<span id="monsterCurrentHP" class="delve-meta-badge"></span>
 									</div>
 								</div>
@@ -135,13 +137,31 @@
 							<p id="monsterDesc" class="combat-unit-desc d-none d-md-block"></p>
 						</article>
 					</div>
+
+					<aside id="delveCombatSidebar" class="delve-combat-sidebar is-collapsed" aria-label="Combat log panel">
+						<div class="delve-combat-sidebar-panel">
+							<div class="delve-combat-sidebar-header">Combat Log</div>
+							<div id="delveCombatLog" class="delve-combat-log" aria-live="polite"></div>
+						</div>
+					</aside>
 				</section>
 
 				<footer class="delve-panel">
+					<div class="delve-log-controls">
+						<button
+							type="button"
+							id="toggleCombatLogBtn"
+							class="delve-combat-log-toggle"
+							aria-expanded="false"
+							aria-controls="delveCombatLog"
+							title="Toggle combat log"
+						>
+							Log
+						</button>
+					</div>
 					<div class="delve-turn-bar" aria-live="polite">
 						<p id="turnIndicator" class="turn-indicator turn-indicator--player">Your turn</p>
 					</div>
-					<div id="delveCombatLog" class="delve-combat-log" aria-live="polite" aria-label="Combat log"></div>
 				</footer>
 
 				<div id="delveEndOverlay" class="delve-end-overlay d-none">

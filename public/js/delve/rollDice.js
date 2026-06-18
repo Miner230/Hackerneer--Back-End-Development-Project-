@@ -8,6 +8,10 @@ const diceDock = document.querySelector('.dice-dock');
 
 const turnIndicator = document.getElementById('turnIndicator');
 
+const combatLogSidebar = document.getElementById('delveCombatSidebar');
+
+const toggleCombatLogBtn = document.getElementById('toggleCombatLogBtn');
+
 
 
 const IDLE_TILT = { x: -18, y: 22 };
@@ -75,22 +79,36 @@ function clearCombatLog() {
 
 
 
-function appendCombatLog(message, type = 'system') {
+function isCombatLogOpen() {
+	return combatLogSidebar?.classList.contains('is-open') ?? false;
+}
 
+function scheduleCombatLogPeek(entry) {
+	entry.classList.add('combat-log-entry--peek');
+
+	entry.addEventListener(
+		'animationend',
+		(event) => {
+			if (event.animationName !== 'combatLogPeekReveal') return;
+			if (!entry.isConnected || isCombatLogOpen()) return;
+			entry.classList.remove('combat-log-entry--peek');
+		},
+		{ once: true }
+	);
+}
+
+function appendCombatLog(message, type = 'system') {
 	if (!combatLog || !message) return;
 
-
-
 	const entry = document.createElement('div');
-
 	entry.className = `combat-log-entry combat-log-${type}`;
-
 	entry.textContent = message;
-
 	combatLog.appendChild(entry);
-
 	combatLog.scrollTop = combatLog.scrollHeight;
 
+	if (!isCombatLogOpen()) {
+		scheduleCombatLogPeek(entry);
+	}
 }
 
 
@@ -186,13 +204,13 @@ function logTurnSummary(data) {
 			'info'
 		);
 
-		if (stats.loot_shard_count > 0 && stats.status === 'completed' && resultMsg.toLowerCase().includes('success')) {
-			appendCombatLog(`Loot available: ${stats.loot_shard_count} shard(s) on this kill.`, 'loot');
-		}
 	}
 
-	if (rewards?.type === 'loot_shard' && rewards.amount) {
-		appendCombatLog(`+${rewards.amount} loot shard added to your rewards!`, 'loot');
+	if (rewards?.type === 'loot_drop' && rewards.items?.length) {
+		rewards.items.forEach((item) => {
+			const qty = item.quantity > 1 ? ` x${item.quantity}` : '';
+			appendCombatLog(`Dropped: ${item.name}${qty} (${item.rarity})`, 'loot');
+		});
 	}
 }
 
@@ -409,9 +427,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+function setCombatLogOpen(isOpen) {
+	if (!combatLogSidebar) return;
+
+	combatLogSidebar.classList.toggle('is-open', isOpen);
+	combatLogSidebar.classList.toggle('is-collapsed', !isOpen);
+
+	if (toggleCombatLogBtn) {
+		toggleCombatLogBtn.setAttribute('aria-expanded', String(isOpen));
+		toggleCombatLogBtn.textContent = isOpen ? 'Hide Log' : 'Log';
+	}
+
+	if (combatLog) {
+		combatLog.querySelectorAll('.combat-log-entry').forEach((entry) => {
+			entry.classList.remove('combat-log-entry--peek');
+		});
+	}
+}
+
 function attachEventListeners() {
-	if (!rollBtn) return;
-	rollBtn.addEventListener('click', triggerDelveAction);
+	if (rollBtn) rollBtn.addEventListener('click', triggerDelveAction);
+
+	if (toggleCombatLogBtn) {
+		toggleCombatLogBtn.addEventListener('click', () => {
+			const isOpen = combatLogSidebar?.classList.contains('is-open');
+			setCombatLogOpen(!isOpen);
+		});
+	}
 }
 
 

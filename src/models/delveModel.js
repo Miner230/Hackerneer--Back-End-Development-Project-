@@ -11,7 +11,7 @@ module.exports.selectAllMonsters = (callback) => {
 // Get all delve instances for a user
 module.exports.selectAllDelveInstance = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT id, monster_id, monster_name, level, health, roll_attempt, loot_shard_count 
+        SELECT id, monster_id, monster_name, level, health, roll_attempt, item_quantity, item_rarity
         FROM delve_instances 
         WHERE user_id = ?
     `;
@@ -33,7 +33,8 @@ module.exports.selectDelveInstanceById = (data, callback) => {
             d.life_regen,
             d.damage_reduction,
             d.roll_attempt,
-            d.loot_shard_count,
+            d.item_quantity,
+            d.item_rarity,
             d.player_health,
             d.player_max_health,
             d.player_damage_reduction,
@@ -59,8 +60,8 @@ module.exports.selectDelveInstanceById = (data, callback) => {
 module.exports.setDelveInstance = (data, callback) => {
 	const SQLSTATMENT = `
         INSERT INTO delve_instances 
-        (user_id, monster_id, monster_name, level, health, life_regen, damage_reduction, roll_attempt, loot_shard_count, player_health, player_max_health, player_damage_reduction, monster_attack, active_turn, player_speed, monster_speed, attacks_remaining)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'player', ?, ?, ?);
+        (user_id, monster_id, monster_name, level, health, life_regen, damage_reduction, roll_attempt, item_quantity, item_rarity, player_health, player_max_health, player_damage_reduction, monster_attack, active_turn, player_speed, monster_speed, attacks_remaining)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'player', ?, ?, ?);
     `;
 	const VALUES = [
 		data.user_id,
@@ -71,7 +72,8 @@ module.exports.setDelveInstance = (data, callback) => {
 		data.life_regen,
 		data.damage_reduction,
 		data.roll_attempt,
-		data.loot_shard_count,
+		data.item_quantity,
+		data.item_rarity,
 		data.player_health,
 		data.player_max_health,
 		data.player_damage_reduction,
@@ -118,7 +120,8 @@ module.exports.displayDelve = (data, callback) => {
             d.life_regen,
             d.damage_reduction,
             d.roll_attempt,
-            d.loot_shard_count,
+            d.item_quantity,
+            d.item_rarity,
             d.player_health,
             d.player_max_health,
             d.player_damage_reduction,

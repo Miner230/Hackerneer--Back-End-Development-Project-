@@ -1,6 +1,6 @@
 const model = require('../models/lootModel.js');
 const mechanicMap = require('../utils/mechanicMap.js');
-const { bulkRollLoot, insertCallback } = require('../middleware/lootConfigs.js');
+const { bulkRollLoot, insertCallback, rollMonsterLoot } = require('../middleware/lootConfigs.js');
 
 // Get all loot items
 module.exports.getAllLoot = (req, res, next) => {
@@ -59,6 +59,55 @@ module.exports.addLootToInventory = (req, res, next) => {
 				amount,
 				insertNext,
 			});
+		});
+	}
+
+	insertNext(0);
+};
+
+// Grant rolled loot when a monster is defeated in delve combat.
+module.exports.grantMonsterDrops = (req, res, next) => {
+	const instance = res.locals.instance_Data?.[0];
+	if (!instance || instance.health > 0) {
+		return next();
+	}
+
+	const lootRows = res.locals.lootRows;
+	const rollResult = rollMonsterLoot(lootRows, instance.item_quantity, instance.item_rarity);
+
+	if (rollResult.error) {
+		return res.status(500).json({ message: rollResult.error });
+	}
+
+	const dropped = rollResult.items || [];
+	if (dropped.length === 0) {
+		res.locals.droppedLoot = [];
+		return next();
+	}
+
+	const userId = res.locals.userId;
+	const inserted = [];
+
+	function insertNext(index) {
+		if (index >= dropped.length) {
+			res.locals.droppedLoot = inserted;
+			return next();
+		}
+
+		const item = dropped[index];
+		model.addLoot({ userId, lootId: item.id, quantity: item.quantity }, (error) => {
+			if (error) {
+				console.error('Error granting monster loot:', error);
+				return res.status(500).json(error);
+			}
+
+			inserted.push({
+				id: item.id,
+				name: item.name,
+				rarity: item.rarity,
+				quantity: item.quantity,
+			});
+			insertNext(index + 1);
 		});
 	}
 

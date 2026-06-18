@@ -150,8 +150,8 @@ function loadDelveInfo() {
 				`Your SPD ${delve.player_speed || '?'} · Monster SPD ${delve.monster_speed || '?'} · Your DR ${delve.player_damage_reduction || 0}%`,
 				'info'
 			);
-			if (delve.loot_shard_count > 0) {
-				appendCombatLog(`Victory loot: ${delve.loot_shard_count} shard(s).`, 'loot');
+			if (delve.item_quantity > 0) {
+				appendCombatLog(`Loot: ${delve.item_quantity} drop(s) — any rarity possible`, 'loot');
 			}
 			sessionStorage.setItem('delveLogInitialized', String(delveId));
 		}
@@ -166,11 +166,15 @@ function loadDelveInfo() {
 		//update monster labels
 		const levelLabel = document.getElementById('monsterLevel');
 		const speedLabel = document.getElementById('monsterSpeed');
+		const itemQuantityLabel = document.getElementById('monsterItemQuantity');
+		const itemRarityLabel = document.getElementById('monsterItemRarity');
 		const drText = document.getElementById('monsterDR');
 		if (levelLabel) levelLabel.textContent = `Lv. ${delve.level || '?'}`;
 		if (speedLabel) speedLabel.textContent = `SPD ${delve.monster_speed || '?'}`;
+		if (itemQuantityLabel) itemQuantityLabel.textContent = `Qty ${delve.item_quantity ?? '?'}`;
+		if (itemRarityLabel) itemRarityLabel.textContent = `Rarity ${delve.item_rarity ?? '?'}`;
 		if (drText) {
-			drText.textContent = `DR ${delve.damage_reduction || 0}% · Regen ${delve.life_regen || 0} · ${delve.loot_shard_count || 0} shards`;
+			drText.textContent = `DR ${delve.damage_reduction || 0}% · Regen ${delve.life_regen || 0}`;
 		}
 
 		const modsEl = document.getElementById('monsterMods');

@@ -478,19 +478,23 @@ body.delve.delve-fullscreen .delve-arena {
 }
 
 /* ==============================
-   Bottom Panel — combat chat log
+   Bottom bar — turn indicator only
 ============================== */
 .delve-panel {
 	padding: 0;
-	background: linear-gradient(0deg, rgba(6, 6, 10, 0.97) 0%, rgba(6, 6, 10, 0.82) 100%);
+	background: linear-gradient(0deg, rgba(6, 6, 10, 0.97) 0%, rgba(6, 6, 10, 0.88) 100%);
 	border-top: 1px solid rgba(255, 210, 120, 0.18);
 	backdrop-filter: blur(4px);
-	z-index: 3;
-	min-height: 0;
-	max-height: 26dvh;
+	z-index: 4;
+	flex-shrink: 0;
 	overflow: hidden;
+}
+
+.delve-log-controls {
 	display: flex;
-	flex-direction: column;
+	justify-content: center;
+	padding: 0.35rem 0.75rem 0.25rem;
+	border-bottom: 1px solid rgba(255, 210, 120, 0.12);
 }
 
 .delve-turn-bar {
@@ -504,6 +508,83 @@ body.delve.delve-fullscreen .delve-arena {
 	box-shadow: 0 -4px 18px rgba(255, 180, 80, 0.08);
 }
 
+/* ==============================
+   Combat log — left side panel
+============================== */
+.delve-combat-sidebar {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	width: min(300px, 30vw);
+	z-index: 5;
+	pointer-events: none;
+}
+
+.delve-combat-sidebar-panel {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	backdrop-filter: none;
+	transition:
+		background 0.35s ease,
+		border-color 0.35s ease,
+		box-shadow 0.35s ease,
+		backdrop-filter 0.35s ease;
+}
+
+.delve-combat-sidebar.is-open {
+	pointer-events: auto;
+}
+
+.delve-combat-sidebar.is-open .delve-combat-sidebar-panel {
+	background: linear-gradient(270deg, rgba(6, 6, 10, 0.72) 0%, rgba(6, 6, 10, 0.94) 18%);
+	border-right: 1px solid rgba(255, 210, 120, 0.28);
+	backdrop-filter: blur(8px);
+	box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+}
+
+.delve-combat-sidebar.is-collapsed .delve-combat-sidebar-header {
+	display: none;
+}
+
+.delve-combat-log-toggle {
+	padding: 0.42rem 1.1rem;
+	border: 1px solid rgba(255, 210, 120, 0.45);
+	border-radius: 8px;
+	background: rgba(12, 12, 18, 0.88);
+	color: #ffe08a;
+	font-size: 0.82rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition:
+		background 0.2s ease,
+		border-color 0.2s ease,
+		color 0.2s ease;
+}
+
+.delve-combat-log-toggle:hover {
+	background: rgba(24, 20, 12, 0.95);
+	border-color: rgba(255, 224, 138, 0.65);
+}
+
+.delve-combat-sidebar-header {
+	flex-shrink: 0;
+	padding: 0.55rem 0.85rem 0.4rem;
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: rgba(255, 224, 138, 0.9);
+	border-bottom: 1px solid rgba(255, 210, 120, 0.2);
+}
+
 .delve-combat-log {
 	flex: 1;
 	min-height: 0;
@@ -511,31 +592,88 @@ body.delve.delve-fullscreen .delve-arena {
 	overflow-x: hidden;
 	display: flex;
 	flex-direction: column;
-	gap: 0.28rem;
-	margin: 0.35rem 0.5rem 0.45rem;
-	padding: 0.35rem 0.45rem;
-	background: rgba(0, 0, 0, 0.35);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 8px;
+	gap: 0.5rem;
+	padding: 0.65rem 0.85rem 0.75rem;
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	margin: 0;
 	scrollbar-width: thin;
-	scrollbar-color: rgba(255, 210, 120, 0.35) transparent;
+	scrollbar-color: rgba(255, 210, 120, 0.45) transparent;
+}
+
+.delve-combat-log::before {
+	content: '';
+	flex: 1 1 0;
+	min-height: 0;
+}
+
+.delve-combat-sidebar.is-collapsed .delve-combat-log {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.delve-combat-sidebar.is-collapsed .delve-combat-log::-webkit-scrollbar {
+	display: none;
 }
 
 .delve-combat-log::-webkit-scrollbar {
-	width: 5px;
+	width: 6px;
 }
 
 .delve-combat-log::-webkit-scrollbar-thumb {
-	background: rgba(255, 210, 120, 0.35);
+	background: rgba(255, 210, 120, 0.45);
 	border-radius: 4px;
 }
 
 .combat-log-entry {
-	font-size: 0.72rem;
-	line-height: 1.35;
-	padding: 0.2rem 0.35rem;
-	border-radius: 4px;
+	flex-shrink: 0;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	padding: 0.4rem 0.55rem;
+	border-radius: 6px;
 	word-break: break-word;
+	background: transparent;
+	overflow: hidden;
+}
+
+.delve-combat-sidebar.is-collapsed .combat-log-entry {
+	opacity: 0;
+	background: transparent !important;
+	clip-path: inset(0 100% 0 0);
+}
+
+.delve-combat-sidebar.is-collapsed .combat-log-entry--peek {
+	opacity: 1;
+	animation: combatLogPeekReveal 2s ease-out forwards;
+}
+
+.delve-combat-sidebar.is-open .combat-log-entry {
+	opacity: 1;
+	clip-path: none;
+	animation: none;
+}
+
+@keyframes combatLogPeekReveal {
+	0% {
+		clip-path: inset(0 100% 0 0);
+		opacity: 1;
+	}
+	18% {
+		clip-path: inset(0 0 0 0);
+		opacity: 1;
+	}
+	72% {
+		clip-path: inset(0 0 0 0);
+		opacity: 1;
+	}
+	100% {
+		clip-path: inset(0 0 0 0);
+		opacity: 0;
+	}
 }
 
 .combat-log-system {
@@ -544,6 +682,9 @@ body.delve.delve-fullscreen .delve-arena {
 
 .combat-log-encounter {
 	color: #ffe08a;
+}
+
+.delve-combat-sidebar.is-open .combat-log-encounter {
 	background: rgba(255, 224, 138, 0.08);
 }
 
@@ -558,21 +699,33 @@ body.delve.delve-fullscreen .delve-arena {
 
 .combat-log-crit {
 	color: #ff6b6b;
+}
+
+.delve-combat-sidebar.is-open .combat-log-crit {
 	background: rgba(255, 80, 80, 0.1);
 }
 
 .combat-log-loot {
 	color: #ffe08a;
+}
+
+.delve-combat-sidebar.is-open .combat-log-loot {
 	background: rgba(255, 200, 80, 0.12);
 }
 
 .combat-log-success {
 	color: #9cf0a8;
+}
+
+.delve-combat-sidebar.is-open .combat-log-success {
 	background: rgba(100, 220, 120, 0.1);
 }
 
 .combat-log-fail {
 	color: #ffb3b3;
+}
+
+.delve-combat-sidebar.is-open .combat-log-fail {
 	background: rgba(255, 100, 100, 0.1);
 }
 
@@ -582,8 +735,11 @@ body.delve.delve-fullscreen .delve-arena {
 
 .combat-log-player-damage {
 	color: #ff9f7a;
-	background: rgba(255, 120, 80, 0.12);
 	font-weight: bold;
+}
+
+.delve-combat-sidebar.is-open .combat-log-player-damage {
+	background: rgba(255, 120, 80, 0.12);
 }
 
 .delve-stat-chips {
@@ -882,16 +1038,25 @@ body.delve.delve-fullscreen .delve-arena {
 		font-size: 14px;
 	}
 
-	.delve-panel {
-		max-height: 28dvh;
-	}
-
 	.turn-indicator {
 		font-size: 1rem;
 	}
 
 	.delve-turn-bar {
 		padding: 0.45rem 0.55rem 0.35rem;
+	}
+
+	.delve-combat-sidebar {
+		width: min(240px, 34vw);
+	}
+
+	.combat-log-entry {
+		font-size: 0.88rem;
+		padding: 0.35rem 0.45rem;
+	}
+
+	.delve-panel {
+		max-height: none;
 	}
 
 	.delve-battlefield {

@@ -70,7 +70,8 @@ module.exports.readDelveInstanceById = (req, res, next) => {
 				life_regen: formatted.life_regen,
 				damage_reduction: formatted.damage_reduction,
 				roll_attempt: formatted.roll_attempt,
-				loot_shard_count: formatted.loot_shard_count,
+				item_quantity: formatted.item_quantity,
+				item_rarity: formatted.item_rarity,
 				player_health: formatted.player_health,
 				player_max_health: formatted.player_max_health,
 				player_damage_reduction: formatted.player_damage_reduction,
@@ -102,7 +103,8 @@ module.exports.createDelveInstance = (req, res, next) => {
 			monsters_level: result.monsters_level,
 			monsters_health: result.monsters_health,
 			roll_attempt: result.roll_attempt,
-			loot_shard_count: result.loot_shard_count,
+			item_quantity: result.item_quantity,
+			item_rarity: result.item_rarity,
 			modded_monster_name: result.modded_monster_name,
 			life_regen: result.life_regen,
 			damage_reduction: result.damage_reduction,
@@ -125,7 +127,8 @@ module.exports.createDelveInstance = (req, res, next) => {
 		life_regen: res.locals.life_regen,
 		damage_reduction: res.locals.damage_reduction,
 		roll_attempt: res.locals.roll_attempt,
-		loot_shard_count: res.locals.loot_shard_count,
+		item_quantity: res.locals.item_quantity,
+		item_rarity: res.locals.item_rarity,
 		player_health: playerStats.player_health,
 		player_max_health: playerStats.player_max_health,
 		player_damage_reduction: playerStats.player_damage_reduction,
@@ -177,7 +180,8 @@ module.exports.displayNewDelve = (req, res, next) => {
 			life_regen: first.life_regen,
 			damage_reduction: first.damage_reduction,
 			roll_attempt: first.roll_attempt,
-			loot_shard_count: first.loot_shard_count,
+			item_quantity: first.item_quantity,
+			item_rarity: first.item_rarity,
 			player_health: first.player_health,
 			player_max_health: first.player_max_health,
 			player_damage_reduction: first.player_damage_reduction,
@@ -289,6 +293,14 @@ module.exports.displayCurrentDelveInstance = (req, res, next) => {
 			monsterTurn: res.locals.combatResult?.monsterTurn || null,
 			combatSummary: res.locals.combatResult || null,
 		});
+
+		if (res.locals.droppedLoot?.length) {
+			res.locals.currentInstance.rewards = {
+				type: 'loot_drop',
+				items: res.locals.droppedLoot,
+			};
+		}
+
 		next();
 	};
 

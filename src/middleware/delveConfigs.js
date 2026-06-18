@@ -238,7 +238,6 @@ function evaluateDelveResult({
 	} else if (current.health <= 0) {
 		current.health = 0;
 		outcomeMessage = 'Success! Monster killed!';
-		rewards = { type: 'loot_shard', amount: 1 };
 		current.status = 'completed';
 	} else if (monsterTurn) {
 		outcomeMessage = 'Monster turn complete. Your turn!';
@@ -268,7 +267,8 @@ function evaluateDelveResult({
 			active_turn: current.active_turn,
 			attacks_remaining: current.attacks_remaining,
 			modifiers: current.modifiers || [],
-			loot_shard_count: current.loot_shard_count,
+			item_quantity: current.item_quantity,
+			item_rarity: current.item_rarity,
 			status: current.status,
 		},
 		rewards: rewards,
@@ -356,7 +356,8 @@ function applyModifierEffects(
 	monsterLevel,
 	monsterHealth,
 	rollAttempt,
-	lootShardCount
+	itemQuantity,
+	itemRarity
 ) {
 	let lifeRegen = 0;
 	let damageReduction = 0;
@@ -397,8 +398,9 @@ function applyModifierEffects(
 				monsterName = `${mod.name} ${monsterName}`; // Modify name
 				break;
 			case 'Shiny':
-				lootShardCount *= 2; // Apply reward modifier
-				monsterName = `${mod.name} ${monsterName}`; // Modify name
+				itemQuantity += 1;
+				itemRarity += 30;
+				monsterName = `${mod.name} ${monsterName}`;
 				break;
 			default:
 				if (COMBAT_ONLY_MODIFIERS.has(mod.name)) {
@@ -413,7 +415,15 @@ function applyModifierEffects(
 	damageReduction = damageReduction || 0;
 
 	// Return the updated values along with the modified monster name
-	return { monsterName, lifeRegen, damageReduction, monsterHealth, rollAttempt, lootShardCount };
+	return { monsterName, lifeRegen, damageReduction, monsterHealth, rollAttempt, itemQuantity, itemRarity };
+}
+
+function computeMonsterLootStats(monsterLevel, selectedModifiers = []) {
+	const modifierCount = Array.isArray(selectedModifiers) ? selectedModifiers.length : 0;
+	const itemQuantity = 1 + Math.floor(monsterLevel / 12) + modifierCount;
+	const itemRarity = 8 + Math.floor(monsterLevel * 0.85) + modifierCount * 20;
+
+	return { itemQuantity, itemRarity };
 }
 
 // Scale the monster's stats based on user data and modifiers
@@ -426,7 +436,7 @@ function scaleMonster(monster, user_data, selectedModifiers) {
 	//random level in range of +3 -3 of user level
 	let monsterHealth = Math.floor(5 * Math.pow(monsterLevel + 1, 1.1)); // Initial health calculation
 	let rollAttempt = Math.floor(4 + Math.log2(monsterLevel + 1)); // Initial roll attempts calculation falls off harder at higher levels
-	let lootShardCount = 1 + Math.floor(monsterLevel / 10) + selectedModifiers.length; // Loot shard count based on monster level and modifiers
+	let { itemQuantity, itemRarity } = computeMonsterLootStats(monsterLevel, selectedModifiers);
 	//cap monster health to prevent out of range errors
 	monsterHealth = Math.min(monsterHealth, 999999999);
 	// Base monster name
@@ -440,7 +450,8 @@ function scaleMonster(monster, user_data, selectedModifiers) {
 		monsterLevel,
 		monsterHealth,
 		rollAttempt,
-		lootShardCount
+		itemQuantity,
+		itemRarity
 	);
 
 	// Get the updated values from applyModifierEffects
@@ -449,14 +460,16 @@ function scaleMonster(monster, user_data, selectedModifiers) {
 	rollAttempt = effects.rollAttempt; 
 	const lifeRegen = effects.lifeRegen;
 	const damageReduction = effects.damageReduction;
-	lootShardCount = effects.lootShardCount;
+	itemQuantity = effects.itemQuantity;
+	itemRarity = effects.itemRarity;
 	const monsterSpeed = computeMonsterSpeed(monsterLevel, selectedModifiers);
 
 	return {
 		level: monsterLevel,
 		health: monsterHealth, 
 		rollAttempt: rollAttempt, 
-		lootShardCount: lootShardCount, 
+		itemQuantity,
+		itemRarity,
 		moddedMonsterName: monsterName, 
 		life_regen: lifeRegen, 
 		damage_reduction: damageReduction,
@@ -502,7 +515,8 @@ function processMonsterData(monster_data, modifier_data, user_data) {
 			monsters_level: scaledMonster.level,
 			monsters_health: scaledMonster.health,
 			roll_attempt: scaledMonster.rollAttempt,
-			loot_shard_count: scaledMonster.lootShardCount,
+			item_quantity: scaledMonster.itemQuantity,
+			item_rarity: scaledMonster.itemRarity,
 			modded_monster_name: scaledMonster.moddedMonsterName,
 			life_regen: scaledMonster.life_regen,
 			damage_reduction: scaledMonster.damage_reduction,
@@ -529,7 +543,8 @@ function formatDelveResults(rows) {
 		life_regen: rows[0].life_regen,
 		damage_reduction: rows[0].damage_reduction,
 		roll_attempt: rows[0].roll_attempt,
-		loot_shard_count: rows[0].loot_shard_count,
+		item_quantity: rows[0].item_quantity,
+		item_rarity: rows[0].item_rarity,
 		player_health: rows[0].player_health ?? rows[0].player_max_health ?? 100,
 		player_max_health: rows[0].player_max_health ?? 100,
 		player_damage_reduction: rows[0].player_damage_reduction ?? 0,
@@ -558,6 +573,7 @@ module.exports = {
 	selectMonsterRandomly,
 	selectMonsterModifiersRandomly,
 	scaleMonster,
+	computeMonsterLootStats,
 	processMonsterData,
 	formatDelveResults,
 	computePlayerCombatStats,

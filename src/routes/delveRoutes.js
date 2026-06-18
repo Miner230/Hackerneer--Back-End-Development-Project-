@@ -48,6 +48,8 @@ router.put(
 	delveController.updateDelveInstanceByUserId,
 	delveController.readDelveInstanceById,
 	userController.updateUserByDelve,
+	lootController.getAllLoot,
+	lootController.grantMonsterDrops,
 	delveController.displayCurrentDelveInstance,
 	responseController.sendData
 );

@@ -135,7 +135,6 @@ module.exports.updateUserByDelve = (req, res, next) => {
 
 	data = {
 		userId: res.locals.userId,
-		loot_shard_count: res.locals.instance_Data[0].loot_shard_count,
 	};
 
 	const callback = (error, results) => {

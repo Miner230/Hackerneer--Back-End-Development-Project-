@@ -1,5 +1,77 @@
 // lootConfigs.js
 
+const RARITY_TIERS = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+
+function getRarityTierIndex(rarity) {
+	const index = RARITY_TIERS.indexOf(rarity);
+	return index >= 0 ? index : 0;
+}
+
+function getDropWeight(lootItem, itemRarity) {
+	const tier = getRarityTierIndex(lootItem.rarity);
+	const baseWeight = Math.max(1, Number(lootItem.weight) || 1);
+	const rarityScore = Math.max(0, Number(itemRarity) || 0);
+
+	// All tiers stay in the pool at every level. item_rarity only shifts weight toward higher tiers.
+	const tierMultiplier =
+		tier === 0 ? 1 : 1 + (rarityScore / 100) * Math.pow(2, tier - 1);
+
+	return baseWeight * tierMultiplier;
+}
+
+function pickWeightedLoot(lootRows, itemRarity) {
+	const weightedLoot = lootRows.map((item) => ({
+		item,
+		weight: getDropWeight(item, itemRarity),
+	}));
+	const totalWeight = weightedLoot.reduce((sum, entry) => sum + entry.weight, 0);
+	if (totalWeight <= 0) return null;
+
+	const roll = Math.random() * totalWeight;
+	let accumulator = 0;
+
+	for (const entry of weightedLoot) {
+		accumulator += entry.weight;
+		if (roll < accumulator) {
+			return entry.item;
+		}
+	}
+
+	return weightedLoot[weightedLoot.length - 1]?.item || null;
+}
+
+// Roll loot directly from a defeated monster's item_quantity and item_rarity stats.
+function rollMonsterLoot(lootRows, itemQuantity, itemRarity) {
+	if (!lootRows || lootRows.length === 0) {
+		return { error: 'No loot data available', items: [] };
+	}
+
+	const drops = Math.max(0, Number(itemQuantity) || 0);
+	if (drops === 0) {
+		return { items: [] };
+	}
+
+	const claimedMap = {};
+
+	for (let i = 0; i < drops; i++) {
+		const selected = pickWeightedLoot(lootRows, itemRarity);
+		if (!selected) continue;
+
+		const key = `${selected.id}-${selected.rarity}`;
+		if (!claimedMap[key]) {
+			claimedMap[key] = {
+				id: selected.id,
+				name: selected.name,
+				rarity: selected.rarity,
+				quantity: 1,
+			};
+		} else {
+			claimedMap[key].quantity += 1;
+		}
+	}
+
+	return { items: Object.values(claimedMap) };
+}
 
 // Rolls multiple loot items based on weighted probabilities.
 // Validates user has enough loot shards and reputation before rolling.
@@ -94,4 +166,10 @@ function insertCallback({
 	insertNext(index + 1); // Move to the next item insert
 }
 
-module.exports = { bulkRollLoot, insertCallback };
+module.exports = {
+	bulkRollLoot,
+	insertCallback,
+	rollMonsterLoot,
+	getRarityTierIndex,
+	RARITY_TIERS,
+};
