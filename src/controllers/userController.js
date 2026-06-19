@@ -89,6 +89,24 @@ module.exports.readUserById = (req, res, next) => {
 	model.selectUserByIdSecure(data, callback);
 };
 
+module.exports.readUserCraftContext = (req, res, next) => {
+	const data = {
+		id: res.locals.userId,
+	};
+
+	model.selectCraftContext(data, (error, results) => {
+		if (error) {
+			console.error('Error readUserCraftContext:', error);
+			return res.status(500).json(error);
+		}
+		if (!results.length) {
+			return res.status(404).json({ message: 'User not found' });
+		}
+		res.locals.user_data = results;
+		next();
+	});
+};
+
 function isPrivilegedAccount(user) {
 	const role = user?.account_role;
 	return role === 'admin' || role === 'god';

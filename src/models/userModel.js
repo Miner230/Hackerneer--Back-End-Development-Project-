@@ -46,6 +46,16 @@ module.exports.selectUserById = (data, callback) => {
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
+// Gets lightweight user fields used by crafting/socket routes.
+module.exports.selectCraftContext = (data, callback) => {
+	const SQLSTATMENT = `
+        SELECT id, account_role, reputation, equipped_dice_id
+        FROM user
+        WHERE id = ?;
+    `;
+	pool.query(SQLSTATMENT, [data.id], callback);
+};
+
 // Gets information from the database about the user without providing sensitive values
 module.exports.selectUserByIdSecure = (data, callback) => {
 	const SQLSTATMENT = `

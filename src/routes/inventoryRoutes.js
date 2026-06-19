@@ -32,22 +32,20 @@ router.post(
 router.put(
 	'/dice/craft',
 	verifyToken,
-	userController.readUserById,
+	userController.readUserCraftContext,
 	diceCraftController.craftEssenceOntoDice,
 	userController.removeReputation,
 	diceCraftController.finalizeCraft,
-	inventoryController.getInventoryById,
 	responseController.sendData
 );
 
 router.put(
 	'/dice/socket',
 	verifyToken,
-	userController.readUserById,
+	userController.readUserCraftContext,
 	diceSocketController.socketItemOntoDice,
 	userController.removeReputation,
 	diceSocketController.finalizeSocket,
-	inventoryController.getInventoryById,
 	responseController.sendData
 );
 

@@ -248,6 +248,72 @@ module.exports.getInventoryById = (req, res, next) => {
 	});
 };
 
+function formatConsumableInventoryRow(row) {
+	if (!row) return null;
+
+	return {
+		id: row.id,
+		user_id: row.user_id,
+		loot_id: row.loot_id,
+		quantity: Number(row.quantity) || 0,
+		name: row.name,
+		mechanic: row.mechanic,
+		stat_description: row.stat_description,
+		statline: row.statline,
+		lore: row.lore,
+		rarity: row.rarity,
+		craft_cost: row.craft_cost,
+		image_key: row.image_key,
+	};
+}
+
+module.exports.applyDiceMutationInventory = (req, res, next) => {
+	const userId = res.locals.userId;
+	const dieRow = res.locals.craftDieRow;
+	const modifiers = res.locals.updatedModifiers || [];
+	const sockets = res.locals.updatedSockets || [];
+	const consumableLootId = res.locals.consumableLootId;
+	const diceInstanceId = dieRow?.id;
+	const equippedId = res.locals.user_data?.[0]?.equipped_dice_id;
+
+	if (!dieRow) {
+		return res.status(500).json({ message: 'Mutation inventory context missing.' });
+	}
+
+	const formattedDie = formatUserDiceInventoryRow(dieRow, modifiers, sockets);
+	const equippedRow = { ...dieRow, dice_instance_id: dieRow.id };
+
+	const sendPatch = (consumables) => {
+		res.locals.inventoryPatch = {
+			dice: [formattedDie],
+			consumables,
+		};
+
+		if (equippedId && equippedId === diceInstanceId) {
+			res.locals.equippedDice = formatEquippedDice(equippedRow, modifiers, sockets);
+		}
+
+		res.locals.is_admin = ['admin', 'god'].includes(res.locals.user_data?.[0]?.account_role);
+		next();
+	};
+
+	if (!consumableLootId) {
+		return sendPatch([]);
+	}
+
+	inventoryModel.getItemFromInventory({ userId, lootId: consumableLootId }, (error, rows) => {
+		if (error) {
+			console.error('Error loading consumed item:', error);
+			return res.status(500).json(error);
+		}
+
+		const consumable = formatConsumableInventoryRow(rows[0]);
+		sendPatch(
+			consumable ? [consumable] : [{ loot_id: consumableLootId, quantity: 0 }]
+		);
+	});
+};
+
 module.exports.useItemInInventory = (req, res, next) => {
 	const data = {
 		userId: res.locals.userId,

@@ -3,7 +3,68 @@ const userDiceModel = require('../models/userDiceModel.js');
 const lootModel = require('../models/lootModel.js');
 const diceSocketModel = require('../models/diceSocketModel.js');
 const diceCraftService = require('../services/diceCraftService.js');
-const { isSocketableMechanic } = require('../utils/diceSockets.js');
+const { applyDiceMutationInventory } = require('./inventoryController.js');
+const { isSocketableMechanic, formatSocketRow } = require('../utils/diceSockets.js');
+
+function insertSocketAndConsume(res, next, payload) {
+	const { userId, lootId, item, diceInstanceId, usedSockets, rolledValue } = payload;
+
+	diceSocketModel.insertSocketItem(
+		{
+			userId,
+			diceInstanceId,
+			slotIndex: usedSockets,
+			mechanic: item.mechanic,
+			rolledValue,
+			sourceLootId: lootId,
+			sourceRarity: item.rarity,
+		},
+		(insertError, result) => {
+			if (insertError) {
+				console.error('Error inserting socket item:', insertError);
+				return res.status(500).json(insertError);
+			}
+
+			lootModel.decrementQnt({ userId, lootId }, (decrementError, decrementResult) => {
+				if (decrementError) {
+					console.error('Error consuming socket item:', decrementError);
+					return res.status(500).json(decrementError);
+				}
+				if (!decrementResult?.affectedRows) {
+					return res.status(404).json({ message: 'Failed to consume weighting stone.' });
+				}
+
+				const newSocket = formatSocketRow({
+					id: result?.insertId,
+					dice_instance_id: diceInstanceId,
+					slot_index: usedSockets,
+					mechanic: item.mechanic,
+					rolled_value: rolledValue,
+					source_loot_id: lootId,
+					source_rarity: item.rarity,
+					source_name: item.name,
+				});
+
+				res.locals.craft_cost = item.craft_cost;
+				res.locals.itemName = item.name;
+				res.locals.targetDiceInstanceId = diceInstanceId;
+				res.locals.craftDieRow = payload.die;
+				res.locals.consumableLootId = lootId;
+				res.locals.updatedModifiers = payload.modifiers || [];
+				res.locals.updatedSockets = [...(payload.sockets || []), newSocket];
+				res.locals.socketedItem = {
+					mechanic: item.mechanic,
+					rolled_value: rolledValue,
+					source_loot_id: lootId,
+					source_rarity: item.rarity,
+					source_name: item.name,
+				};
+
+				next();
+			});
+		}
+	);
+}
 
 module.exports.socketItemOntoDice = (req, res, next) => {
 	const userId = res.locals.userId;
@@ -60,47 +121,20 @@ module.exports.socketItemOntoDice = (req, res, next) => {
 		}
 
 		const rolledValue = Math.max(1, Number(item.statline) || 1);
+		const payload = { userId, lootId, item, die, diceInstanceId, usedSockets, rolledValue };
 
-		diceSocketModel.insertSocketItem(
-			{
-				userId,
-				diceInstanceId,
-				slotIndex: usedSockets,
-				mechanic: item.mechanic,
-				rolledValue,
-				sourceLootId: lootId,
-				sourceRarity: item.rarity,
-			},
-			(insertError) => {
-				if (insertError) {
-					console.error('Error inserting socket item:', insertError);
-					return res.status(500).json(insertError);
-				}
-
-				lootModel.decrementQnt({ userId, lootId }, (decrementError, decrementResult) => {
-					if (decrementError) {
-						console.error('Error consuming socket item:', decrementError);
-						return res.status(500).json(decrementError);
-					}
-					if (!decrementResult?.affectedRows) {
-						return res.status(404).json({ message: 'Failed to consume weighting stone.' });
-					}
-
-					res.locals.craft_cost = item.craft_cost;
-					res.locals.itemName = item.name;
-					res.locals.targetDiceInstanceId = diceInstanceId;
-					res.locals.socketedItem = {
-						mechanic: item.mechanic,
-						rolled_value: rolledValue,
-						source_loot_id: lootId,
-						source_rarity: item.rarity,
-						source_name: item.name,
-					};
-
-					next();
-				});
+		diceCraftService.loadModifiersAndSockets(userId, diceInstanceId, (contextError, { modifiers, sockets }) => {
+			if (contextError) {
+				console.error('Error loading die socket context:', contextError);
+				return res.status(500).json(contextError);
 			}
-		);
+
+			insertSocketAndConsume(res, next, {
+				...payload,
+				modifiers,
+				sockets,
+			});
+		});
 	};
 
 	userDiceModel.selectById({ userId, diceInstanceId }, (diceError, diceRows) => {
@@ -118,21 +152,33 @@ module.exports.socketItemOntoDice = (req, res, next) => {
 
 module.exports.finalizeSocket = (req, res, next) => {
 	const userId = res.locals.userId;
+	const dieRow = res.locals.craftDieRow;
+	const modifiers = res.locals.updatedModifiers || [];
+	const sockets = res.locals.updatedSockets || [];
 	const diceInstanceId = res.locals.targetDiceInstanceId;
+	const equippedId = res.locals.user_data?.[0]?.equipped_dice_id;
 
-	diceCraftService.syncDiceStatsIfEquipped(
-		userId,
-		diceInstanceId,
-		res.locals.user_data,
-		(syncError) => {
-			if (syncError) {
-				console.error('Error syncing socketed die stats:', syncError);
-				return res.status(500).json(syncError);
+	const complete = () => {
+		const socketed = res.locals.socketedItem;
+		res.locals.message = `Socketed ${socketed.source_name} (+${socketed.rolled_value}) into your die.`;
+		applyDiceMutationInventory(req, res, next);
+	};
+
+	if (equippedId === diceInstanceId) {
+		return diceCraftService.syncDiceInstanceStatsFromData(
+			userId,
+			dieRow,
+			modifiers,
+			sockets,
+			(syncError) => {
+				if (syncError) {
+					console.error('Error syncing socketed die stats:', syncError);
+					return res.status(500).json(syncError);
+				}
+				complete();
 			}
+		);
+	}
 
-			const socketed = res.locals.socketedItem;
-			res.locals.message = `Socketed ${socketed.source_name} (+${socketed.rolled_value}) into your die.`;
-			next();
-		}
-	);
+	complete();
 };

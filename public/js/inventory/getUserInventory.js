@@ -134,12 +134,47 @@ function fetchInventoryNow() {
 	}, 'GET', null, token);
 }
 
+function mergeInventoryPatch(inventory, patch) {
+	if (!patch || (!patch.dice?.length && !patch.consumables?.length)) {
+		return inventory;
+	}
+
+	const nextInventory = [...(inventory || [])];
+
+	(patch.dice || []).forEach((die) => {
+		const dieId = die.dice_instance_id ?? die.id;
+		const index = nextInventory.findIndex(
+			(item) => (item.dice_instance_id ?? item.id) === dieId
+		);
+		if (index >= 0) nextInventory[index] = die;
+		else nextInventory.push(die);
+	});
+
+	(patch.consumables || []).forEach((item) => {
+		const index = nextInventory.findIndex(
+			(entry) => entry.loot_id === item.loot_id && entry.mechanic !== 'equip_dice'
+		);
+		if (Number(item.quantity) <= 0) {
+			if (index >= 0) nextInventory.splice(index, 1);
+			return;
+		}
+		if (index >= 0) nextInventory[index] = { ...nextInventory[index], ...item };
+		else nextInventory.push(item);
+	});
+
+	return nextInventory;
+}
+
 function applyInventoryResponse(data) {
 	if (!data) return false;
 
 	let applied = false;
 
-	if (Array.isArray(data.inventory)) {
+	if (data.inventoryPatch) {
+		cachedInventory = mergeInventoryPatch(cachedInventory, data.inventoryPatch);
+		renderInventoryItems(cachedInventory);
+		applied = true;
+	} else if (Array.isArray(data.inventory)) {
 		cachedInventory = data.inventory;
 		renderInventoryItems(cachedInventory);
 		applied = true;

@@ -90,6 +90,35 @@ function loadModifiersAndSockets(userId, diceInstanceId, callback) {
 	});
 }
 
+function syncDiceInstanceStatsFromData(userId, dieRow, modifiers, callbackOrSockets, maybeCallback) {
+	let knownSockets = null;
+	let callback = callbackOrSockets;
+
+	if (typeof callbackOrSockets !== 'function') {
+		knownSockets = callbackOrSockets;
+		callback = maybeCallback;
+	}
+
+	if (!dieRow?.loot_id) {
+		return diceModel.resetToDefault({ userId }, (error) => callback(error, knownSockets || []));
+	}
+
+	const applyStats = (socketError, sockets) => {
+		if (socketError) return callback(socketError);
+
+		const effectiveStats = computeEffectiveDiceStats(dieRow, modifiers, sockets);
+		diceModel.applyGearStats({ ...effectiveStats, userId }, (applyError) => {
+			callback(applyError, sockets);
+		});
+	};
+
+	if (knownSockets) {
+		return applyStats(null, knownSockets);
+	}
+
+	loadSockets(userId, dieRow.id, applyStats);
+}
+
 function syncDiceInstanceStats(userId, diceInstanceId, callback) {
 	userDiceModel.selectById({ userId, diceInstanceId }, (diceError, diceRows) => {
 		if (diceError) return callback(diceError);
@@ -163,6 +192,7 @@ module.exports = {
 	loadModifiers,
 	loadSockets,
 	loadModifiersAndSockets,
+	syncDiceInstanceStatsFromData,
 	syncDiceInstanceStats,
 	syncEquippedDiceStats,
 	syncDiceStatsIfEquipped,

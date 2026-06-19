@@ -3,6 +3,7 @@ const userDiceModel = require('../models/userDiceModel.js');
 const lootModel = require('../models/lootModel.js');
 const diceModifierModel = require('../models/diceModifierModel.js');
 const diceCraftService = require('../services/diceCraftService.js');
+const { applyDiceMutationInventory } = require('./inventoryController.js');
 const {
 	MAX_PREFIXES,
 	MAX_SUFFIXES,
@@ -13,6 +14,7 @@ const {
 	rollModifierValue,
 	evaluateEssenceCraftAction,
 	formatCraftedModifierDisplay,
+	formatModifierRow,
 } = require('../utils/diceEssenceCraft.js');
 
 function consumeEssenceAndRespond(res, next, payload) {
@@ -116,11 +118,36 @@ module.exports.craftEssenceOntoDice = (req, res, next) => {
 				source_name: essence.name,
 			};
 
-			const finishCraft = (writeError) => {
+			const finishCraft = (writeError, result) => {
 				if (writeError) {
 					console.error('Error saving die affix:', writeError);
 					return res.status(500).json(writeError);
 				}
+
+				const modifierId =
+					craftAction.action === 'upgrade' ? craftAction.modifierId : result?.insertId;
+				const savedModifier = formatModifierRow({
+					id: modifierId,
+					dice_instance_id: diceInstanceId,
+					affix_type: affixType,
+					essence_mechanic: essence.mechanic,
+					essence_family: essenceFamily,
+					modifier_name: modifierName,
+					rolled_value: rolledValue,
+					source_loot_id: essenceLootId,
+					source_rarity: essence.rarity,
+					source_name: essence.name,
+				});
+				const updatedModifiers =
+					craftAction.action === 'upgrade'
+						? modifiers.map((modifier) =>
+								modifier.id === modifierId ? savedModifier : modifier
+							)
+						: [...modifiers, savedModifier];
+
+				res.locals.craftDieRow = dieRow;
+				res.locals.updatedModifiers = updatedModifiers;
+				res.locals.consumableLootId = essenceLootId;
 
 				consumeEssenceAndRespond(res, next, {
 					userId,
@@ -181,25 +208,37 @@ module.exports.craftEssenceOntoDice = (req, res, next) => {
 
 module.exports.finalizeCraft = (req, res, next) => {
 	const userId = res.locals.userId;
+	const dieRow = res.locals.craftDieRow;
+	const modifiers = res.locals.updatedModifiers || [];
 	const diceInstanceId = res.locals.targetDiceInstanceId;
+	const equippedId = res.locals.user_data?.[0]?.equipped_dice_id;
 
-	diceCraftService.syncDiceStatsIfEquipped(
-		userId,
-		diceInstanceId,
-		res.locals.user_data,
-		(syncError) => {
-			if (syncError) {
-				console.error('Error syncing crafted die stats:', syncError);
-				return res.status(500).json(syncError);
-			}
-
-			const crafted = res.locals.craftedModifier;
-			const verb = res.locals.craftAction === 'upgrade' ? 'Upgraded' : 'Applied';
-			const valueText = formatCraftedModifierDisplay(crafted);
-			res.locals.message = `${verb} ${crafted.modifier_name} (${valueText}) to your die.`;
-			next();
+	const complete = (socketError, sockets) => {
+		if (socketError) {
+			console.error('Error loading crafted die sockets:', socketError);
+			return res.status(500).json(socketError);
 		}
-	);
+
+		res.locals.updatedSockets = sockets || [];
+
+		const crafted = res.locals.craftedModifier;
+		const verb = res.locals.craftAction === 'upgrade' ? 'Upgraded' : 'Applied';
+		const valueText = formatCraftedModifierDisplay(crafted);
+		res.locals.message = `${verb} ${crafted.modifier_name} (${valueText}) to your die.`;
+
+		applyDiceMutationInventory(req, res, next);
+	};
+
+	if (equippedId === diceInstanceId) {
+		return diceCraftService.syncDiceInstanceStatsFromData(
+			userId,
+			dieRow,
+			modifiers,
+			complete
+		);
+	}
+
+	diceCraftService.loadSockets(userId, diceInstanceId, complete);
 };
 
 module.exports.attachDiceCraftingData = (req, res, next) => {
