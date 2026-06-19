@@ -23,6 +23,30 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 //update player HUD from delve stats
+function updatePlayerHealthUI(currentHealth, maxHealthOverride) {
+	const storedMax = parseInt(sessionStorage.getItem('maxPlayerHealth'), 10);
+	const maxPlayerHealth =
+		maxHealthOverride ?? (Number.isFinite(storedMax) && storedMax > 0 ? storedMax : 100);
+	const hp = Math.max(0, Math.round(Number(currentHealth) || 0));
+	const percentExact =
+		maxPlayerHealth > 0 ? Math.min(100, Math.max(0, (hp / maxPlayerHealth) * 100)) : 0;
+
+	const playerCurrentHP = document.getElementById('playerCurrentHP');
+	const playerHealthFill = document.getElementById('playerHealthFill');
+	const playerHealthLabel = document.getElementById('playerHealthLabel');
+
+	if (playerCurrentHP) {
+		playerCurrentHP.textContent = `HP ${formatCombatHp(hp)}`;
+	}
+	if (playerHealthFill) {
+		playerHealthFill.style.width = `${percentExact}%`;
+		playerHealthFill.style.opacity = percentExact === 0 ? '0' : '1';
+	}
+	if (playerHealthLabel) {
+		playerHealthLabel.textContent = `HP: ${Math.round(percentExact)}%`;
+	}
+}
+
 function updatePlayerUI(delve) {
 	const username = localStorage.getItem('username') || 'Hacker';
 	const userLevel = localStorage.getItem('level') || delve.player_level || '?';
@@ -30,14 +54,9 @@ function updatePlayerUI(delve) {
 	const playerName = document.getElementById('playerName');
 	const playerLevel = document.getElementById('playerLevel');
 	const playerDR = document.getElementById('playerDR');
-	const playerCurrentHP = document.getElementById('playerCurrentHP');
-	const playerHealthFill = document.getElementById('playerHealthFill');
-	const playerHealthLabel = document.getElementById('playerHealthLabel');
 
 	const currentPlayerHealth = delve.player_health ?? delve.player_max_health ?? 0;
 	const maxPlayerHealth = delve.player_max_health || parseInt(sessionStorage.getItem('maxPlayerHealth')) || 100;
-	let playerPercent = Math.floor((currentPlayerHealth / maxPlayerHealth) * 100);
-	playerPercent = Math.min(100, Math.max(0, playerPercent));
 
 	if (playerName) playerName.textContent = username;
 	if (playerLevel) playerLevel.textContent = `Lv. ${userLevel}`;
@@ -48,12 +67,8 @@ function updatePlayerUI(delve) {
 	if (playerDR) playerDR.textContent = `DR ${delve.player_damage_reduction ?? 0}%`;
 	const playerSpeedEl = document.getElementById('playerSpeed');
 	if (playerSpeedEl) playerSpeedEl.textContent = `SPD ${delve.player_speed ?? '?'}`;
-	if (playerCurrentHP) playerCurrentHP.textContent = `HP ${currentPlayerHealth} / ${maxPlayerHealth}`;
-	if (playerHealthFill) {
-		playerHealthFill.style.width = `${playerPercent}%`;
-		playerHealthFill.style.opacity = playerPercent === 0 ? '0' : '1';
-	}
-	if (playerHealthLabel) playerHealthLabel.textContent = `HP: ${playerPercent}%`;
+
+	updatePlayerHealthUI(currentPlayerHealth, maxPlayerHealth);
 
 	updateTurnUI(delve);
 }
@@ -76,6 +91,10 @@ function escapeHtml(text) {
 }
 
 function groupMonsterModifiers(mods = []) {
+	if (typeof groupModifiersWithTiers === 'function') {
+		return groupModifiersWithTiers(mods);
+	}
+
 	const grouped = new Map();
 
 	mods.forEach((mod) => {
@@ -91,6 +110,7 @@ function groupMonsterModifiers(mods = []) {
 			name,
 			count: 1,
 			description: mod?.description || name,
+			displayName: name,
 		});
 	});
 
@@ -110,8 +130,8 @@ function renderMonsterModifierTags(modsEl, mods = []) {
 
 	modsEl.innerHTML = grouped
 		.map((mod) => {
-			const label = mod.count > 1 ? `${mod.name} ×${mod.count}` : mod.name;
-			const stackNote = mod.count > 1 ? ` (${mod.count} stacks)` : '';
+			const label = mod.displayName || mod.name;
+			const stackNote = mod.count > 1 ? ` (${mod.count} stacks of ${mod.name})` : '';
 			return `<span class="mod-tag" title="${escapeHtml(mod.description + stackNote)}">${escapeHtml(label)}</span>`;
 		})
 		.join('');
@@ -157,6 +177,9 @@ function updateMonsterHealthUI(currentHealth) {
 	if (hpLabel) hpLabel.textContent = `HP ${formatCombatHp(hp)}`;
 
 	sessionStorage.setItem('delvePrevHealth', String(hp));
+	if (typeof patchMonsterStats === 'function') {
+		patchMonsterStats({ health: hp });
+	}
 }
 
 //load delve info and render ui
@@ -259,6 +282,12 @@ function loadDelveInfo() {
 			Array.isArray(delve.modifiers) ? delve.modifiers : []
 		);
 
+		if (typeof setMonsterStats === 'function') {
+			setMonsterStats(
+				buildMonsterStatsSnapshot(delve, monsterImageId, monsterName, monsterDesc, currentHealth)
+			);
+		}
+
 		updateTurnUI(delve);
 	};
 
@@ -295,6 +324,8 @@ function startDelve() {
 		}
 
 		clearCombatLog();
+		if (typeof closeMonsterStatsSheet === 'function') closeMonsterStatsSheet();
+		if (typeof setMonsterStats === 'function') setMonsterStats(null);
 		enterDelveFullscreen();
 		animateDiceRollSequence([], { showPrompt: true });
 		loadDelveInfo();

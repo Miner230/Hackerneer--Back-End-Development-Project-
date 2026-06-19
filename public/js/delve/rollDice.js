@@ -15,6 +15,8 @@ const toggleCombatLogBtn = document.getElementById('toggleCombatLogBtn');
 
 
 const ROLL_PAUSE_MS = 400;
+const FAST_ROLL_COUNT_THRESHOLD = 10;
+const FAST_ROLL_SPEED_MULTIPLIER = 2;
 
 const ROLL_DURATION_MS = DiceRollAnimator.ROLL_DURATION_MS;
 
@@ -292,6 +294,10 @@ function logRollOutcome(data) {
 
 	const instance = getCombatInstance(data);
 	logMonsterTurnOutcome(instance?.monsterTurn || data?.monsterTurn, instance?.monsterAttack || data?.monsterAttack);
+
+	const playerRegen = instance?.playerRegen || data?.playerRegen;
+	if (playerRegen) appendCombatLog(playerRegen, 'info');
+
 	logTurnSummary(data);
 }
 
@@ -388,10 +394,16 @@ function showFace(face, animate = false) {
 	setCubeRotation(target.x, target.y, animate);
 }
 
-async function rollSingleDie(face) {
-	const result = await DiceRollAnimator.rollToFace(diceCube, face, diceRollState);
+async function rollSingleDie(face, speedMultiplier = 1) {
+	const result = await DiceRollAnimator.rollToFace(diceCube, face, diceRollState, {
+		speedMultiplier,
+	});
 	diceRollState = result.state;
 	currentRotation = { x: result.x, y: result.y };
+}
+
+function getRollAnimationSpeedMultiplier(rollCount) {
+	return rollCount >= FAST_ROLL_COUNT_THRESHOLD ? FAST_ROLL_SPEED_MULTIPLIER : 1;
 }
 
 
@@ -482,6 +494,8 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 		rollDamages = null,
 		damageTarget = null,
 		startingMonsterHealth = null,
+		startingPlayerHealth = null,
+		playerMaxHealth = null,
 		attackEffects = null,
 	} = options;
 
@@ -525,12 +539,15 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 	try {
 
 		let runningMonsterHealth = startingMonsterHealth;
+		let runningPlayerHealth = startingPlayerHealth;
+		const speedMultiplier = getRollAnimationSpeedMultiplier(rolls.length);
+		const rollPauseMs = ROLL_PAUSE_MS / speedMultiplier;
 
 		for (let i = 0; i < rolls.length; i++) {
 
 			const face = Math.min(6, Math.max(1, Number(rolls[i]) || 1));
 
-			await rollSingleDie(face);
+			await rollSingleDie(face, speedMultiplier);
 
 			const rollDamage = Array.isArray(rollDamages) ? rollDamages[i] : 0;
 			const isRollCrit = resolveRollCrit(attackEffects, i);
@@ -553,6 +570,15 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 					updateMonsterHealthUI(runningMonsterHealth);
 				}
 
+				if (
+					damageTarget === 'player' &&
+					runningPlayerHealth !== null &&
+					runningPlayerHealth !== undefined
+				) {
+					runningPlayerHealth = Math.max(0, runningPlayerHealth - rollDamage);
+					updatePlayerHealthUI(runningPlayerHealth, playerMaxHealth);
+				}
+
 				if (attackEffects && canShowHitEffects) {
 					if (isRollCrit) {
 						showCritEffect();
@@ -568,9 +594,11 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 				}
 			}
 
-			if (i < rolls.length - 1) await delay(ROLL_PAUSE_MS);
+			if (i < rolls.length - 1) await delay(rollPauseMs);
 
 		}
+
+		return { runningMonsterHealth, runningPlayerHealth };
 
 	} finally {
 		isRolling = false;
@@ -600,17 +628,24 @@ async function animateMonsterTurn(monsterTurn, stats, startingPlayerHealth) {
 	for (const attack of monsterTurn.attacks) {
 		const rollDamages = splitDamageAcrossRolls(attack.baseRolls, attack.damageDealt);
 
-		await animateDiceRollSequence(attack.baseRolls || [], {
+		const rollResult = await animateDiceRollSequence(attack.baseRolls || [], {
 			enableRollAfter: false,
 			rollDamages,
 			damageTarget: 'player',
+			startingPlayerHealth: runningPlayerHealth,
+			playerMaxHealth: stats?.player_max_health,
 			attackEffects: {
 				critPerRoll: attack.critPerRoll,
 				isCrit: Boolean(attack.isCrit),
 			},
 		});
 
-		runningPlayerHealth = Math.max(0, runningPlayerHealth - (attack.damageDealt ?? 0));
+		if (rollResult?.runningPlayerHealth !== null && rollResult?.runningPlayerHealth !== undefined) {
+			runningPlayerHealth = rollResult.runningPlayerHealth;
+		} else {
+			runningPlayerHealth = Math.max(0, runningPlayerHealth - (attack.damageDealt ?? 0));
+		}
+
 		if (stats) {
 			updatePlayerUI(getStatsForMonsterAttackPhase(stats, runningPlayerHealth));
 		}
@@ -687,6 +722,9 @@ function handleDelveActionResponse(status, data) {
 
 			if (stats) {
 				updatePlayerUI(stats);
+				if (typeof syncMonsterStatsFromDelve === 'function') {
+					syncMonsterStatsFromDelve(stats);
+				}
 			}
 
 			const lootDropWait = logTurnSummary(data);

@@ -1083,6 +1083,283 @@ body.delve.delve-fullscreen .delve-arena {
 }
 
 /* ==============================
+   Monster stats inspect sheet
+============================== */
+.monster-inspect-target {
+	cursor: pointer;
+	position: relative;
+}
+
+.monster-inspect-target::after {
+	content: '';
+	position: absolute;
+	inset: 8%;
+	border-radius: 12px;
+	border: 2px solid transparent;
+	pointer-events: none;
+	transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.monster-inspect-target:hover::after,
+.monster-inspect-target:focus-visible::after {
+	border-color: rgba(255, 224, 138, 0.45);
+	box-shadow: 0 0 18px rgba(255, 200, 80, 0.22);
+}
+
+.monster-inspect-target:focus-visible {
+	outline: none;
+}
+
+.monster-stats-sheet {
+	position: fixed;
+	inset: 0;
+	z-index: 10050;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	pointer-events: none;
+}
+
+.monster-stats-sheet.is-open {
+	display: flex;
+	pointer-events: auto;
+}
+
+.monster-stats-sheet-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(4, 6, 12, 0.72);
+	backdrop-filter: blur(4px);
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+
+.monster-stats-sheet.is-visible .monster-stats-sheet-backdrop {
+	opacity: 1;
+}
+
+.monster-stats-sheet-panel {
+	position: relative;
+	width: min(480px, 100%);
+	min-height: min(72vh, 560px);
+	max-height: min(92vh, 820px);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border-radius: 16px;
+	border: 2px solid rgba(192, 169, 122, 0.65);
+	background: radial-gradient(circle at top, rgba(45, 32, 18, 0.98), rgba(10, 10, 14, 0.98));
+	box-shadow:
+		0 0 0 1px rgba(255, 220, 140, 0.08),
+		0 18px 48px rgba(0, 0, 0, 0.65);
+	opacity: 0;
+	transform: translateY(18px) scale(0.94);
+	transition:
+		opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+		transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.monster-stats-sheet.is-visible .monster-stats-sheet-panel {
+	opacity: 1;
+	transform: translateY(0) scale(1);
+}
+
+.monster-stats-sheet-close {
+	position: absolute;
+	top: 0.55rem;
+	right: 0.55rem;
+	width: 2rem;
+	height: 2rem;
+	border: 1px solid rgba(255, 180, 180, 0.45);
+	border-radius: 8px;
+	background: rgba(80, 20, 20, 0.55);
+	color: #ffb3b3;
+	font-size: 1.25rem;
+	line-height: 1;
+	cursor: pointer;
+	z-index: 2;
+	transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.monster-stats-sheet-close:hover {
+	background: rgba(120, 30, 30, 0.75);
+	transform: scale(1.05);
+}
+
+.monster-stats-sheet-header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 1.15rem 1.15rem 0.95rem;
+	border-bottom: 1px solid rgba(255, 210, 120, 0.14);
+	flex-shrink: 0;
+}
+
+.monster-stats-sheet-portrait {
+	width: 84px;
+	height: 84px;
+	object-fit: contain;
+	filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.65));
+	flex-shrink: 0;
+	animation: monsterStatsPortraitPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.monster-stats-sheet-heading {
+	min-width: 0;
+}
+
+.monster-stats-sheet-title {
+	margin: 0;
+	font-size: clamp(1.15rem, 3.8vw, 1.45rem);
+	color: #ffe08a;
+	line-height: 1.15;
+	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+.monster-stats-sheet-hint {
+	margin: 0.35rem 0 0;
+	font-size: 0.82rem;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.monster-stats-sheet-body {
+	flex: 1;
+	min-height: 0;
+	padding: 1rem 1.15rem 1.15rem;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(192, 169, 122, 0.45) transparent;
+}
+
+.monster-stats-sheet-body--static .monster-stat-row,
+.monster-stats-sheet-body--static .monster-stats-sheet-desc,
+.monster-stats-sheet-body--static .monster-stats-mod-item,
+.monster-stats-sheet-body--static .monster-stats-no-mods {
+	animation: none;
+}
+
+.monster-stats-sheet-desc {
+	margin: 0 0 1rem;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	color: rgba(255, 255, 255, 0.78);
+	animation: monsterStatsRowIn 0.38s ease calc(var(--row-i, 0) * 0.04s) both;
+}
+
+.monster-stats-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.6rem 0.85rem;
+	margin: 0;
+}
+
+.monster-stat-row {
+	margin: 0;
+	padding: 0.65rem 0.75rem;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	animation: monsterStatsRowIn 0.38s ease calc(var(--row-i, 0) * 0.045s + 0.05s) both;
+}
+
+.monster-stat-row dt {
+	margin: 0;
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+.monster-stat-row dd {
+	margin: 0.25rem 0 0;
+	font-size: 1rem;
+	font-weight: 400;
+	color: #f5f5f5;
+	line-height: 1.35;
+}
+
+.monster-stats-mods {
+	margin-top: 1rem;
+}
+
+.monster-stats-mods-title {
+	margin: 0 0 0.55rem;
+	font-size: 0.85rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: #e2c8ff;
+}
+
+.monster-stats-mod-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+}
+
+.monster-stats-mod-item {
+	padding: 0.65rem 0.75rem;
+	border-radius: 10px;
+	background: rgba(120, 80, 160, 0.18);
+	border: 1px solid rgba(180, 140, 220, 0.35);
+	animation: monsterStatsRowIn 0.38s ease calc(var(--row-i, 0) * 0.04s + 0.08s) both;
+}
+
+.monster-stats-mod-name {
+	display: block;
+	font-size: 0.92rem;
+	font-weight: 500;
+	color: #f0e4ff;
+}
+
+.monster-stats-mod-desc {
+	display: block;
+	margin-top: 0.2rem;
+	font-size: 0.85rem;
+	line-height: 1.4;
+	color: rgba(255, 255, 255, 0.68);
+}
+
+.monster-stats-no-mods {
+	margin: 1rem 0 0;
+	font-size: 0.88rem;
+	color: rgba(255, 255, 255, 0.55);
+	font-style: italic;
+	animation: monsterStatsRowIn 0.38s ease 0.2s both;
+}
+
+@keyframes monsterStatsRowIn {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes monsterStatsPortraitPop {
+	from {
+		opacity: 0;
+		transform: scale(0.82) rotate(-4deg);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1) rotate(0deg);
+	}
+}
+
+@media (max-width: 480px) {
+	.monster-stats-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ==============================
    Delve Layout & Container (legacy)
 ============================== */
 #delveInfo {

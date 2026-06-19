@@ -1,18 +1,27 @@
 // monsterConfig.js
 const { diceRoll } = require('./diceCalculator.js');
+const { buildModdedMonsterName } = require('../utils/modifierTierNames.js');
 
-// Player combat stats scale with user level
+// Player combat stats scale with user level and essence bonuses
 function computePlayerCombatStats(user) {
 	const level = Math.max(1, Number(user?.level || 1));
-	const maxHealth = Math.floor(100 + level * 15);
+	const baseMaxHealth = Math.floor(100 + level * 15);
+	const flatHealth = Number(user?.player_flat_health || 0);
+	const maxHealthPercent = Number(user?.player_max_health_percent || 0);
+	const maxHealth = Math.floor((baseMaxHealth + flatHealth) * (1 + maxHealthPercent / 100));
 	const damageReduction = Math.min(35, Math.floor(level / 4));
-	const playerSpeed = 1;
+	const playerSpeedBonus = Number(user?.player_speed_bonus || 0);
+	const playerSpeed = Math.max(1, 1 + playerSpeedBonus);
+	const playerLifeRegen = Number(user?.player_life_regen || 0);
+	const damageReductionPenetration = Number(user?.damage_reduction_penetration || 0);
 
 	return {
 		player_max_health: maxHealth,
 		player_health: maxHealth,
 		player_damage_reduction: damageReduction,
 		player_speed: playerSpeed,
+		player_life_regen: playerLifeRegen,
+		damage_reduction_penetration: damageReductionPenetration,
 	};
 }
 
@@ -85,8 +94,9 @@ function applyDamageReduction(rawDamage, reductionPercent) {
 	return Math.max(1, Math.floor((rawDamage * (100 - reductionPercent)) / 100));
 }
 
-function applyMonsterDamageFromPlayerRoll(rollResult, monsterDR, lifeRegen) {
-	const afterReduction = applyDamageReduction(rollResult, monsterDR);
+function applyMonsterDamageFromPlayerRoll(rollResult, monsterDR, lifeRegen, drPenetration = 0) {
+	const effectiveDR = Math.max(0, Number(monsterDR || 0) - Number(drPenetration || 0));
+	const afterReduction = applyDamageReduction(rollResult, effectiveDR);
 	return Math.max(0, afterReduction - (lifeRegen || 0));
 }
 
@@ -163,11 +173,13 @@ function resolveCombatAction(instance, playerRoll) {
 	let activeTurn = 'player';
 	let status = 'in progress';
 	let monsterTurn = null;
+	let playerRegenApplied = 0;
 
 	const rawDamageToMonster = applyMonsterDamageFromPlayerRoll(
 		playerRoll.rollResult,
 		instance.damage_reduction,
-		instance.life_regen
+		instance.life_regen,
+		instance.damage_reduction_penetration ?? 0
 	);
 	const playerDamageToMonster = rawDamageToMonster;
 
@@ -190,6 +202,16 @@ function resolveCombatAction(instance, playerRoll) {
 		activeTurn = 'player';
 		attacksRemaining = instance.player_speed ?? 1;
 
+		let playerRegen = Number(instance.player_life_regen || 0);
+		if (playerRegen > 0 && playerHealth > 0) {
+			const beforeRegen = playerHealth;
+			playerHealth = Math.min(
+				instance.player_max_health ?? playerHealth,
+				playerHealth + playerRegen
+			);
+			playerRegenApplied = playerHealth - beforeRegen;
+		}
+
 		if (playerHealth <= 0) {
 			status = 'completed';
 		}
@@ -202,6 +224,7 @@ function resolveCombatAction(instance, playerRoll) {
 		activeTurn,
 		status,
 		playerDamageToMonster,
+		playerRegenApplied,
 		monsterTurn,
 	};
 }
@@ -238,10 +261,15 @@ function evaluateDelveResult({
 	let outcomeMessage = 'Keep going!';
 	let rewards = null;
 	let monsterAttackMessage = null;
+	let playerRegenMessage = null;
 
 	if (monsterTurn?.totalDamage > 0) {
 		const hitCount = monsterTurn.attacks.length;
 		monsterAttackMessage = `Monster attacks ${hitCount} ${hitCount === 1 ? 'time' : 'times'} for ${monsterTurn.totalDamage} total damage!`;
+	}
+
+	if ((combatSummary?.playerRegenApplied ?? 0) > 0) {
+		playerRegenMessage = `You regenerated ${combatSummary.playerRegenApplied} HP.`;
 	}
 
 	if (current.player_health <= 0) {
@@ -263,6 +291,7 @@ function evaluateDelveResult({
 		rolled: rollDescription,
 		message: outcomeMessage,
 		monsterAttack: monsterAttackMessage,
+		playerRegen: playerRegenMessage,
 		monsterTurn: monsterTurn,
 		stats: {
 			level: current.level,
@@ -275,6 +304,8 @@ function evaluateDelveResult({
 			player_health: current.player_health,
 			player_max_health: current.player_max_health,
 			player_damage_reduction: current.player_damage_reduction,
+			player_life_regen: current.player_life_regen ?? 0,
+			damage_reduction_penetration: current.damage_reduction_penetration ?? 0,
 			player_speed: current.player_speed,
 			monster_speed: current.monster_speed,
 			active_turn: current.active_turn,
@@ -409,54 +440,39 @@ function applyModifierEffects(
 ) {
 	let lifeRegen = 0;
 	let damageReduction = 0;
-	const COMBAT_ONLY_MODIFIERS = new Set([
-		'Speedy',
-		'Bloodthirsty',
-		'Deadly',
-		'Echoing',
-		'Prolific',
-		'Savage',
-	]);
 
 	// Loop through each selected modifier and apply its effect
 	selectedModifiers.forEach((mod) => {
 		switch (mod.name) {
 			case 'Giant':
-				// Doubling monster health based on modifier
 				monsterHealth *= 2;
-				monsterName = `${mod.name} ${monsterName}`;
 				break;
 
 			case 'Regenerative':
-				// Setting life regeneration based on monster level
-				lifeRegen = Math.floor(monsterLevel / 2);
-				monsterName = `${mod.name} ${monsterName}`;
+				lifeRegen += Math.floor(monsterLevel / 2);
 				break;
 
-			case 'Fortified':
-				// Calculating damage reduction based on user level
-				const baseReduction = 0.3; // 30% base damage reduction
-				const scalingPerLevel = 0.005; // 0.5% per level
-				const maxReduction = 0.8; // 80% max cap
+			case 'Fortified': {
+				const baseReduction = 0.3;
+				const scalingPerLevel = 0.005;
+				const maxReduction = 0.8;
 
 				let totalReduction = baseReduction + user_data.level * scalingPerLevel;
-				totalReduction = Math.min(totalReduction, maxReduction); // Cap the reduction at 80%
+				totalReduction = Math.min(totalReduction, maxReduction);
 
-				damageReduction = totalReduction * 100; // Apply damage reduction in percentage
-				monsterName = `${mod.name} ${monsterName}`; // Modify name
+				damageReduction = Math.max(damageReduction, totalReduction * 100);
 				break;
+			}
 			case 'Shiny':
 				itemQuantity += 1;
 				itemRarity += 30;
-				monsterName = `${mod.name} ${monsterName}`;
 				break;
 			default:
-				if (COMBAT_ONLY_MODIFIERS.has(mod.name)) {
-					monsterName = `${mod.name} ${monsterName}`;
-				}
 				break;
 		}
 	});
+
+	monsterName = buildModdedMonsterName(monsterName, selectedModifiers);
 
 	// Ensure that lifeRegen and damageReduction are never undefined
 	lifeRegen = lifeRegen || 0;
@@ -588,6 +604,8 @@ function formatDelveResults(rows) {
 		player_health: rows[0].player_health ?? rows[0].player_max_health ?? 100,
 		player_max_health: rows[0].player_max_health ?? 100,
 		player_damage_reduction: rows[0].player_damage_reduction ?? 0,
+		player_life_regen: rows[0].player_life_regen ?? 0,
+		damage_reduction_penetration: rows[0].damage_reduction_penetration ?? 0,
 		player_speed: rows[0].player_speed ?? 1,
 		monster_speed: rows[0].monster_speed ?? 2,
 		active_turn: rows[0].active_turn ?? 'player',

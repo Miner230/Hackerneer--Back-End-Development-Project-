@@ -9,6 +9,8 @@ function loadDiceInfo(data) {
 	}
 
 	const stats = data.rows;
+	const user = Array.isArray(data.user_data) ? data.user_data[0] : null;
+	const drPenetration = Number(user?.damage_reduction_penetration || 0);
 
 	diceDiv.innerHTML = `
     <div class="card mb-4 p-3 profile-card text-light">
@@ -21,6 +23,7 @@ function loadDiceInfo(data) {
             <li class="list-group-item d-flex justify-content-between text-primary">Duplication Number ✵<span>${stats.duplication_number}</span></li>
             <li class="list-group-item d-flex justify-content-between text-danger">Critical Chance ☣<span>${stats.crit_chance}</span></li>
             <li class="list-group-item d-flex justify-content-between text-danger">Critical Power ☠︎︎<span>${stats.crit_power}</span></li>
+            <li class="list-group-item d-flex justify-content-between text-warning">DR Penetration ⚔<span>${drPenetration}</span></li>
             <li class="list-group-item d-flex justify-content-between">Side 1 Weight<span>${stats.side_1}</span></li>
             <li class="list-group-item d-flex justify-content-between">Side 2 Weight<span>${stats.side_2}</span></li>
             <li class="list-group-item d-flex justify-content-between">Side 3 Weight<span>${stats.side_3}</span></li>

@@ -138,7 +138,9 @@
 		cubeElement.style.transform = buildTransform(x, y);
 	}
 
-	function rollToFace(cubeElement, gameFace, state) {
+	function rollToFace(cubeElement, gameFace, state, options = {}) {
+		const speedMultiplier = Math.max(1, Number(options.speedMultiplier) || 1);
+		const durationMs = ROLL_DURATION_MS / speedMultiplier;
 		const { x, y, state: nextState } = computeThomasRotation(gameFace, { ...state });
 
 		return new Promise((resolve) => {
@@ -147,22 +149,24 @@
 				return;
 			}
 
-			const onEnd = (event) => {
-				if (event.propertyName !== 'transform') return;
+			const finishRoll = () => {
 				cubeElement.removeEventListener('transitionend', onEnd);
 				cubeElement.classList.remove('is-rolling');
+				cubeElement.style.transitionDuration = '';
+				applyRotation(cubeElement, x, y, false);
 				resolve({ x, y, state: nextState });
 			};
 
+			const onEnd = (event) => {
+				if (event.propertyName !== 'transform') return;
+				finishRoll();
+			};
+
+			cubeElement.style.transitionDuration = `${durationMs}ms`;
 			cubeElement.addEventListener('transitionend', onEnd);
 			applyRotation(cubeElement, x, y, true);
 
-			setTimeout(() => {
-				cubeElement.removeEventListener('transitionend', onEnd);
-				cubeElement.classList.remove('is-rolling');
-				applyRotation(cubeElement, x, y, false);
-				resolve({ x, y, state: nextState });
-			}, ROLL_DURATION_MS + 150);
+			window.setTimeout(finishRoll, durationMs + 150 / speedMultiplier);
 		});
 	}
 

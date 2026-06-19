@@ -156,6 +156,41 @@
 						</article>
 					</div>
 
+					<div
+						id="monsterStatsSheet"
+						class="monster-stats-sheet"
+						aria-hidden="true"
+						aria-modal="true"
+						role="dialog"
+						aria-labelledby="monsterStatsSheetTitle"
+					>
+						<div class="monster-stats-sheet-backdrop" data-close-stats></div>
+						<div class="monster-stats-sheet-panel">
+							<button
+								type="button"
+								class="monster-stats-sheet-close"
+								data-close-stats
+								aria-label="Close monster stats"
+							>
+								×
+							</button>
+							<header class="monster-stats-sheet-header">
+								<img
+									id="monsterStatsSheetPortrait"
+									class="monster-stats-sheet-portrait"
+									alt=""
+									width="72"
+									height="72"
+								/>
+								<div class="monster-stats-sheet-heading">
+									<h2 id="monsterStatsSheetTitle" class="monster-stats-sheet-title">Monster</h2>
+									<p class="monster-stats-sheet-hint">Click the monster again to close</p>
+								</div>
+							</header>
+							<div id="monsterStatsSheetBody" class="monster-stats-sheet-body"></div>
+						</div>
+					</div>
+
 					<aside id="delveCombatSidebar" class="delve-combat-sidebar is-collapsed" aria-label="Combat log panel">
 						<div class="delve-combat-sidebar-panel">
 							<div class="delve-combat-sidebar-header">Combat Log</div>
@@ -207,7 +242,9 @@
 		<script src="js/queryCmds.js"></script>
 		<script src="js/navbar.js"></script>
 		<script src="js/mainUtils.js"></script>
+		<script src="js/delve/modifierTierNames.js"></script>
 		<script src="js/delve/diceRollAnimator.js"></script>
+		<script src="js/delve/monsterStatsSheet.js"></script>
 		<script src="js/delve/rollDice.js"></script>
 		<script src="js/delve/delveCreator.js"></script>
 		<script src="js/notification.js"></script>

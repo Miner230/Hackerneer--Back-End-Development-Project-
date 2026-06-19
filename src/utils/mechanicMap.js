@@ -71,4 +71,29 @@ module.exports = {
 		row: 'side_6',
 		indexName: 'user_id',
 	},
+	player_flat_health: {
+		table: 'user',
+		row: 'player_flat_health',
+		indexName: 'id',
+	},
+	player_max_health_percent: {
+		table: 'user',
+		row: 'player_max_health_percent',
+		indexName: 'id',
+	},
+	damage_reduction_penetration: {
+		table: 'user',
+		row: 'damage_reduction_penetration',
+		indexName: 'id',
+	},
+	player_life_regen: {
+		table: 'user',
+		row: 'player_life_regen',
+		indexName: 'id',
+	},
+	player_speed_bonus: {
+		table: 'user',
+		row: 'player_speed_bonus',
+		indexName: 'id',
+	},
 };

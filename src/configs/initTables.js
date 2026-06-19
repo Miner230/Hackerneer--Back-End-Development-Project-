@@ -53,7 +53,12 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       level_up_cost BIGINT DEFAULT 100,
       voidstone_count INT DEFAULT 0,
       loot_shard INT DEFAULT 0,
-      number_of_delve_completed INT DEFAULT 0
+      number_of_delve_completed INT DEFAULT 0,
+      player_flat_health INT NOT NULL DEFAULT 0,
+      player_max_health_percent INT NOT NULL DEFAULT 0,
+      damage_reduction_penetration INT NOT NULL DEFAULT 0,
+      player_life_regen INT NOT NULL DEFAULT 0,
+      player_speed_bonus INT NOT NULL DEFAULT 0
   );
 
   CREATE TABLE inventory (
@@ -134,6 +139,8 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       player_health INT NOT NULL,
       player_max_health INT NOT NULL,
       player_damage_reduction INT NOT NULL DEFAULT 0,
+      player_life_regen INT NOT NULL DEFAULT 0,
+      damage_reduction_penetration INT NOT NULL DEFAULT 0,
       monster_attack INT NOT NULL DEFAULT 0,
       active_turn VARCHAR(10) NOT NULL DEFAULT 'player',
       player_speed INT NOT NULL DEFAULT 1,
@@ -344,7 +351,42 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   ("Stone of Dominion III", "face_3", "+5 weight to face 3", 5, "Legendary", "Three carves its mark on fate.", 500, 1),
   ("Stone of Dominion IV", "face_4", "+5 weight to face 4", 5, "Legendary", "Four reshapes the world.", 500, 1),
   ("Stone of Dominion V", "face_5", "+5 weight to face 5", 5, "Legendary", "Five becomes inevitable.", 500, 1),
-  ("Stone of Dominion VI", "face_6", "+5 weight to face 6", 5, "Legendary", "Six commands the dice.", 500, 1);
+  ("Stone of Dominion VI", "face_6", "+5 weight to face 6", 5, "Legendary", "Six commands the dice.", 500, 1),
+
+  -- Essence of Vigor (+ flat max health)
+  ("Lesser Essence of vigor", "player_flat_health", "+25 flat max health ♥", 25, "Common", "Warmth spreads through your core.", 50, 200),
+  ("Mediocre Essence of vigor", "player_flat_health", "+50 flat max health ♥", 50, "Uncommon", "Your body hardens against the abyss.", 100, 100),
+  ("Refined Essence of vigor", "player_flat_health", "+75 flat max health ♥", 75, "Rare", "Vitality becomes second nature.", 150, 50),
+  ("Greater Essence of vigor", "player_flat_health", "+100 flat max health ♥", 100, "Epic", "You are a fortress of flesh.", 300, 10),
+  ("Perfect Essence of vigor", "player_flat_health", "+150 flat max health ♥", 150, "Legendary", "Life itself kneels to your will.", 500, 1),
+
+  -- Essence of Fortitude (+ % max health)
+  ("Lesser Essence of fortitude", "player_max_health_percent", "+2% max health ♡", 2, "Common", "A faint bulwark forms within.", 50, 200),
+  ("Mediocre Essence of fortitude", "player_max_health_percent", "+4% max health ♡", 4, "Uncommon", "Your limits stretch outward.", 100, 100),
+  ("Refined Essence of fortitude", "player_max_health_percent", "+6% max health ♡", 6, "Rare", "Endurance reshapes your frame.", 150, 50),
+  ("Greater Essence of fortitude", "player_max_health_percent", "+8% max health ♡", 8, "Epic", "You outgrow mortal bounds.", 300, 10),
+  ("Perfect Essence of fortitude", "player_max_health_percent", "+12% max health ♡", 12, "Legendary", "Your life pool becomes an ocean.", 500, 1),
+
+  -- Essence of Sunder (+ DR penetration)
+  ("Lesser Essence of sunder", "damage_reduction_penetration", "+2 DR penetration ⚔", 2, "Common", "Armor feels thinner already.", 50, 200),
+  ("Mediocre Essence of sunder", "damage_reduction_penetration", "+4 DR penetration ⚔", 4, "Uncommon", "Defenses crack before you strike.", 100, 100),
+  ("Refined Essence of sunder", "damage_reduction_penetration", "+6 DR penetration ⚔", 6, "Rare", "You carve through resistance.", 150, 50),
+  ("Greater Essence of sunder", "damage_reduction_penetration", "+8 DR penetration ⚔", 8, "Epic", "No shell can hide from you.", 300, 10),
+  ("Perfect Essence of sunder", "damage_reduction_penetration", "+12 DR penetration ⚔", 12, "Legendary", "You unmake every ward.", 500, 1),
+
+  -- Essence of Renewal (+ life regen per turn)
+  ("Lesser Essence of renewal", "player_life_regen", "+3 life regen per turn ✚", 3, "Common", "Wounds close in quiet moments.", 50, 200),
+  ("Mediocre Essence of renewal", "player_life_regen", "+6 life regen per turn ✚", 6, "Uncommon", "Breath returns between blows.", 100, 100),
+  ("Refined Essence of renewal", "player_life_regen", "+10 life regen per turn ✚", 10, "Rare", "Your pulse mends what breaks.", 150, 50),
+  ("Greater Essence of renewal", "player_life_regen", "+15 life regen per turn ✚", 15, "Epic", "Recovery outpaces ruin.", 300, 10),
+  ("Perfect Essence of renewal", "player_life_regen", "+25 life regen per turn ✚", 25, "Legendary", "Death must wait its turn.", 500, 1),
+
+  -- Essence of Haste (+ speed per turn)
+  ("Lesser Essence of haste", "player_speed_bonus", "+1 speed per turn ⚡", 1, "Common", "Your reflexes sharpen slightly.", 50, 200),
+  ("Mediocre Essence of haste", "player_speed_bonus", "+1 speed per turn ⚡", 1, "Uncommon", "You strike before thought catches up.", 100, 100),
+  ("Refined Essence of haste", "player_speed_bonus", "+2 speed per turn ⚡", 2, "Rare", "Momentum becomes a second weapon.", 150, 50),
+  ("Greater Essence of haste", "player_speed_bonus", "+2 speed per turn ⚡", 2, "Epic", "The abyss cannot keep pace.", 300, 10),
+  ("Perfect Essence of haste", "player_speed_bonus", "+3 speed per turn ⚡", 3, "Legendary", "You are a storm between heartbeats.", 500, 1);
   `;
 
 		pool.query(SQLSTATEMENT, callback);

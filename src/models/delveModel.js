@@ -38,6 +38,8 @@ module.exports.selectDelveInstanceById = (data, callback) => {
             d.player_health,
             d.player_max_health,
             d.player_damage_reduction,
+            d.player_life_regen,
+            d.damage_reduction_penetration,
             d.player_speed,
             d.monster_speed,
             d.active_turn,
@@ -60,8 +62,8 @@ module.exports.selectDelveInstanceById = (data, callback) => {
 module.exports.setDelveInstance = (data, callback) => {
 	const SQLSTATMENT = `
         INSERT INTO delve_instances 
-        (user_id, monster_id, monster_name, level, health, life_regen, damage_reduction, roll_attempt, item_quantity, item_rarity, player_health, player_max_health, player_damage_reduction, monster_attack, active_turn, player_speed, monster_speed, attacks_remaining)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'player', ?, ?, ?);
+        (user_id, monster_id, monster_name, level, health, life_regen, damage_reduction, roll_attempt, item_quantity, item_rarity, player_health, player_max_health, player_damage_reduction, player_life_regen, damage_reduction_penetration, monster_attack, active_turn, player_speed, monster_speed, attacks_remaining)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'player', ?, ?, ?);
     `;
 	const VALUES = [
 		data.user_id,
@@ -77,6 +79,8 @@ module.exports.setDelveInstance = (data, callback) => {
 		data.player_health,
 		data.player_max_health,
 		data.player_damage_reduction,
+		data.player_life_regen ?? 0,
+		data.damage_reduction_penetration ?? 0,
 		data.player_speed,
 		data.monster_speed,
 		data.attacks_remaining,
@@ -125,6 +129,8 @@ module.exports.displayDelve = (data, callback) => {
             d.player_health,
             d.player_max_health,
             d.player_damage_reduction,
+            d.player_life_regen,
+            d.damage_reduction_penetration,
             d.player_speed,
             d.monster_speed,
             d.active_turn,
