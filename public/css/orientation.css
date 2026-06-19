@@ -72,6 +72,7 @@ body.landscape-blocked {
 
 body.landscape-blocked main,
 body.landscape-blocked .delve-arena,
+body.landscape-blocked .inventory-arena,
 body.landscape-blocked #navbar-placeholder,
 body.landscape-blocked #footer-placeholder {
 	pointer-events: none;

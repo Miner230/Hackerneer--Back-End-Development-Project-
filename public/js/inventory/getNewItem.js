@@ -74,7 +74,7 @@ function handleClaimLoot(input, overlay, grid, messageBox, token) {
 				slot.title = `${name} x${quantity}`;
 
 				const img = document.createElement('img');
-				img.src = `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${id}.png`;
+				img.src = typeof getLootImageSrc === 'function' ? getLootImageSrc(id) : `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${id}.png`;
 				img.alt = name;
 
 				const qnt = document.createElement('div');

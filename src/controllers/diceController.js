@@ -1,5 +1,12 @@
 const model = require('../models/diceModel.js');
+const lootModel = require('../models/lootModel.js');
+const userDiceModel = require('../models/userDiceModel.js');
+const diceGearModel = require('../models/diceGearModel.js');
+const userModel = require('../models/userModel.js');
+const diceCraftService = require('../services/diceCraftService.js');
 const { diceRoll } = require('../middleware/diceCalculator.js');
+
+const STARTER_DICE_NAME = 'Basic Die';
 
 // Create a new dice record for the user
 module.exports.createNewDice = (req, res, next) => {
@@ -17,6 +24,69 @@ module.exports.createNewDice = (req, res, next) => {
 	};
 
 	model.addDice(data, callback);
+};
+
+// Grant and equip the starter die for new accounts
+module.exports.grantStarterDice = (req, res, next) => {
+	const userId = res.locals.userId;
+
+	lootModel.selectLootIdByName({ name: STARTER_DICE_NAME }, (lootError, lootRows) => {
+		if (lootError) {
+			console.error('Error grantStarterDice lookup:', lootError);
+			return res.status(500).json(lootError);
+		}
+
+		const lootId = lootRows[0]?.id;
+		if (!lootId) {
+			console.warn(`Starter dice "${STARTER_DICE_NAME}" not found; skipping grant.`);
+			return next();
+		}
+
+		userDiceModel.addUserDice(
+			{
+				userId,
+				lootId,
+				itemLevel: 1,
+				instanceRarity: 'Common',
+				dropRarityScore: 8,
+			},
+			(diceError, diceResult) => {
+			if (diceError) {
+				console.error('Error creating starter dice instance:', diceError);
+				return res.status(500).json(diceError);
+			}
+
+			const diceInstanceId = diceResult.insertId;
+
+			diceGearModel.selectByLootId({ lootId }, (gearError, gearRows) => {
+				if (gearError) {
+					console.error('Error loading starter dice gear:', gearError);
+					return res.status(500).json(gearError);
+				}
+
+				const gear = gearRows[0];
+				if (!gear) {
+					return next();
+				}
+
+				userModel.setEquippedDiceId({ userId, diceInstanceId }, (equipError) => {
+					if (equipError) {
+						console.error('Error saving starter equipped dice:', equipError);
+						return res.status(500).json(equipError);
+					}
+
+					diceCraftService.syncEquippedDiceStats(userId, (syncError) => {
+						if (syncError) {
+							console.error('Error syncing starter dice stats:', syncError);
+							return res.status(500).json(syncError);
+						}
+
+						next();
+					});
+				});
+			});
+		});
+	});
 };
 
 // Read dice values for a specific user

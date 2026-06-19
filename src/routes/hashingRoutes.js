@@ -23,6 +23,7 @@ router.post(
 	bcryptController.hashPassword,
 	userController.register,
 	diceController.createNewDice,
+	diceController.grantStarterDice,
 	jwtController.generateToken,
 	jwtController.sendToken
 );

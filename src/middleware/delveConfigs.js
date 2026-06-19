@@ -2,18 +2,18 @@
 const { diceRoll } = require('./diceCalculator.js');
 const { buildModdedMonsterName } = require('../utils/modifierTierNames.js');
 
-// Player combat stats scale with user level and essence bonuses
-function computePlayerCombatStats(user) {
+// Player combat stats scale with user level and dice-crafted essence bonuses
+function computePlayerCombatStats(user, playerBonuses = {}) {
 	const level = Math.max(1, Number(user?.level || 1));
 	const baseMaxHealth = Math.floor(100 + level * 15);
-	const flatHealth = Number(user?.player_flat_health || 0);
-	const maxHealthPercent = Number(user?.player_max_health_percent || 0);
+	const flatHealth = Number(playerBonuses.player_flat_health || 0);
+	const maxHealthPercent = Number(playerBonuses.player_max_health_percent || 0);
 	const maxHealth = Math.floor((baseMaxHealth + flatHealth) * (1 + maxHealthPercent / 100));
 	const damageReduction = Math.min(35, Math.floor(level / 4));
-	const playerSpeedBonus = Number(user?.player_speed_bonus || 0);
+	const playerSpeedBonus = Number(playerBonuses.player_speed_bonus || 0);
 	const playerSpeed = Math.max(1, 1 + playerSpeedBonus);
-	const playerLifeRegen = Number(user?.player_life_regen || 0);
-	const damageReductionPenetration = Number(user?.damage_reduction_penetration || 0);
+	const playerLifeRegen = Number(playerBonuses.player_life_regen || 0);
+	const damageReductionPenetration = Number(playerBonuses.damage_reduction_penetration || 0);
 
 	return {
 		player_max_health: maxHealth,

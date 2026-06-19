@@ -82,6 +82,42 @@ body.profile {
 	color: #f2f2f2;
 }
 
+.profile-xp-row {
+	padding-top: 0.25rem;
+	padding-bottom: 0.75rem;
+}
+
+.profile-xp-block {
+	width: 100%;
+}
+
+.profile-xp-label {
+	font-size: 0.9rem;
+	color: #c9b896;
+	margin-bottom: 0.15rem;
+}
+
+.profile-xp-values {
+	font-size: 0.85rem;
+	color: #9fd4ff;
+	margin-bottom: 0.35rem;
+}
+
+.profile-xp-bar {
+	height: 10px;
+	background: rgba(0, 0, 0, 0.45);
+	border-radius: 999px;
+	overflow: hidden;
+	border: 1px solid rgba(201, 184, 150, 0.35);
+}
+
+.profile-xp-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #3d8bfd, #6ea8fe);
+	border-radius: 999px;
+	transition: width 0.35s ease;
+}
+
 /* ==============================
    RPG Heading
 ============================== */

@@ -9,8 +9,48 @@ function loadDiceInfo(data) {
 	}
 
 	const stats = data.rows;
-	const user = Array.isArray(data.user_data) ? data.user_data[0] : null;
-	const drPenetration = Number(user?.damage_reduction_penetration || 0);
+	const playerBonuses = data.playerBonuses || {};
+	const drPenetration = Number(playerBonuses.damage_reduction_penetration || 0);
+	const modifiers = Array.isArray(data.diceModifiers) ? data.diceModifiers : [];
+
+	const gearMin = Number(stats.flat_damage_min || 0) || Number(stats.level || 1);
+	const gearMax =
+		Number(stats.flat_damage_max || 0) ||
+		Number(stats.flat_damage || 0) ||
+		Math.max(1, Number(stats.level || 1) * 5);
+	const edgeMin = Number(stats.flat_damage_roll_min || 0);
+	const edgeMax = Number(stats.flat_damage_roll_max || 0);
+	const combinedFlatMin = gearMin + edgeMin;
+	const combinedFlatMax = gearMax + edgeMax;
+	const combinedFlatDisplay =
+		combinedFlatMax > 0 ? `+${combinedFlatMin}-${combinedFlatMax}` : '+0';
+
+	const EDGE_FLAT_DAMAGE_RANGES = {
+		Common: { min: 1, max: 3 },
+		Uncommon: { min: 1, max: 6 },
+		Rare: { min: 5, max: 15 },
+		Epic: { min: 20, max: 60 },
+		Legendary: { min: 130, max: 150 },
+	};
+
+	function formatProfileModifierValue(modifier) {
+		if (modifier.essence_mechanic === 'dice_flat_damage_percent') {
+			return `+${modifier.rolled_value}%`;
+		}
+		if (modifier.essence_mechanic === 'dice_flat_damage_roll') {
+			const rarity = String(modifier.source_rarity || 'Common');
+			const range = EDGE_FLAT_DAMAGE_RANGES[rarity] || EDGE_FLAT_DAMAGE_RANGES.Common;
+			return `+${range.min}-${range.max}`;
+		}
+		return `+${modifier.rolled_value}`;
+	}
+
+	const modifierRows = modifiers
+		.map((modifier) => {
+			const valueText = formatProfileModifierValue(modifier);
+			return `<li class="list-group-item d-flex justify-content-between ${modifier.affix_type === 'prefix' ? 'text-primary' : 'text-warning'}">${modifier.modifier_name}<span>${valueText}</span></li>`;
+		})
+		.join('');
 
 	diceDiv.innerHTML = `
     <div class="card mb-4 p-3 profile-card text-light">
@@ -21,6 +61,8 @@ function loadDiceInfo(data) {
             <li class="list-group-item d-flex justify-content-between">No. of rolls<span>${stats.no_of_rolls}</span></li>
             <li class="list-group-item d-flex justify-content-between text-primary">Duplication Chance ☆<span>${stats.duplication_chance}</span></li>
             <li class="list-group-item d-flex justify-content-between text-primary">Duplication Number ✵<span>${stats.duplication_number}</span></li>
+            <li class="list-group-item d-flex justify-content-between text-warning">Flat Damage per Roll<span>${combinedFlatDisplay}</span></li>
+            <li class="list-group-item d-flex justify-content-between text-warning">Increased Flat Damage %<span>${stats.flat_damage_percent ?? 0}%</span></li>
             <li class="list-group-item d-flex justify-content-between text-danger">Critical Chance ☣<span>${stats.crit_chance}</span></li>
             <li class="list-group-item d-flex justify-content-between text-danger">Critical Power ☠︎︎<span>${stats.crit_power}</span></li>
             <li class="list-group-item d-flex justify-content-between text-warning">DR Penetration ⚔<span>${drPenetration}</span></li>
@@ -31,6 +73,7 @@ function loadDiceInfo(data) {
             <li class="list-group-item d-flex justify-content-between">Side 5 Weight<span>${stats.side_5}</span></li>
             <li class="list-group-item d-flex justify-content-between">Side 6 Weight<span>${stats.side_6}</span></li>
           </ul>
+          ${modifierRows ? `<h5 class="text-center mt-4 mb-2 rpg-heading">Affixes</h5><ul class="list-group list-group-flush bg-transparent stat-list">${modifierRows}</ul>` : ''}
       </div>
     </div>
   `;

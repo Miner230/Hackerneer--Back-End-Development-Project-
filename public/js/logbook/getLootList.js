@@ -23,17 +23,23 @@ function loadLootList(lootListData) {
 		datasetFields: ['name', 'description'], // Fields to store for search
 		cardClass: 'loot-card', // CSS class for each card
 		enableClick: false, // Disable click events
-		displayFn: (loot) => `
+		displayFn: (loot) => {
+			const imgSrc =
+				typeof getLootImageSrc === 'function'
+					? getLootImageSrc(loot.id)
+					: `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${loot.id}.png`;
+			return `
 		<div class="card-body text-center">
 		  <img 
-			src="https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${loot.id}.png" 
+			src="${imgSrc}" 
 			class="card-img-top mb-3"
 			alt="${loot.name} image">
 		  <h5 class="card-title">${loot.name}</h5>
 		  <p class="card-text mb-1">${loot.lore}</p>
 		  <p class="card-text">Rarity: ${loot.rarity}</p>
 		</div>
-	  `
+	  `;
+		},
 	});
 
 	// Apply rarity-based CSS styles to the loot cards

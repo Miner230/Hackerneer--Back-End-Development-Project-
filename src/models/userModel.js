@@ -49,7 +49,7 @@ module.exports.selectUserById = (data, callback) => {
 // Gets information from the database about the user without providing sensitive values
 module.exports.selectUserByIdSecure = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT id, username, level, level_up_cost, loot_shard, number_of_delve_completed, reputation, rep_multi, voidstone_count,
+        SELECT id, username, account_role, level, experience, level_up_cost, loot_shard, number_of_delve_completed, reputation, rep_multi, voidstone_count,
                player_flat_health, player_max_health_percent, damage_reduction_penetration, player_life_regen, player_speed_bonus
         FROM user
         WHERE id = ?;
@@ -135,4 +135,22 @@ module.exports.selectLeaderboard = (callback) => {
     LIMIT 10;
     `;
 	pool.query(SQLSTATMENT, callback);
+};
+
+module.exports.setEquippedDiceId = (data, callback) => {
+	const SQLSTATMENT = `
+        UPDATE user
+        SET equipped_dice_id = ?
+        WHERE id = ?;
+    `;
+	pool.query(SQLSTATMENT, [data.diceInstanceId, data.userId], callback);
+};
+
+module.exports.clearEquippedDiceId = (data, callback) => {
+	const SQLSTATMENT = `
+        UPDATE user
+        SET equipped_dice_id = NULL
+        WHERE id = ?;
+    `;
+	pool.query(SQLSTATMENT, [data.userId], callback);
 };

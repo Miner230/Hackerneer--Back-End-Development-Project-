@@ -1,4 +1,10 @@
 const model = require('../models/userModel.js');
+const levelingModel = require('../models/levelingModel.js');
+const {
+	getKillXpReward,
+	applyXpGain,
+	getXpProgress,
+} = require('../utils/playerXp.js');
 
 // Get all users
 module.exports.getAllUsers = (req, res, next) => {
@@ -81,6 +87,72 @@ module.exports.readUserById = (req, res, next) => {
 		}
 	};
 	model.selectUserByIdSecure(data, callback);
+};
+
+function isPrivilegedAccount(user) {
+	const role = user?.account_role;
+	return role === 'admin' || role === 'god';
+}
+
+module.exports.requireAdminAccount = (req, res, next) => {
+	const user = res.locals.user_data?.[0];
+	if (!isPrivilegedAccount(user)) {
+		return res.status(403).json({ message: 'Admin access required.' });
+	}
+	next();
+};
+
+module.exports.attachAccountFlags = (req, res, next) => {
+	const user = res.locals.user_data?.[0];
+	res.locals.account_role = user?.account_role || 'user';
+	res.locals.is_admin = isPrivilegedAccount(user);
+	next();
+};
+
+module.exports.attachXpProgress = (req, res, next) => {
+	const user = res.locals.user_data?.[0];
+	if (user) {
+		res.locals.xpProgress = getXpProgress(user.level, user.experience ?? 0);
+	}
+	next();
+};
+
+module.exports.grantKillExperience = (req, res, next) => {
+	const instance = res.locals.instance_Data?.[0];
+	if (!instance || Number(instance.health) > 0) {
+		return next();
+	}
+
+	const user = res.locals.user_data[0];
+	const monsterLevel = Math.max(1, Number(instance.level) || 1);
+	const xpReward = getKillXpReward(monsterLevel);
+	const gain = applyXpGain(user.level, user.experience ?? 0, xpReward);
+
+	levelingModel.updateLevelAndExperience(
+		{
+			userId: res.locals.userId,
+			level: gain.level,
+			experience: gain.experience,
+		},
+		(error, results) => {
+			if (error) {
+				console.error('Error grantKillExperience:', error);
+				return res.status(500).json(error);
+			}
+			if (!results?.affectedRows) {
+				return res.status(404).json({ message: 'Failed to apply kill experience.' });
+			}
+
+			res.locals.xpReward = xpReward;
+			res.locals.levelsGained = gain.levelsGained;
+			res.locals.xpProgress = getXpProgress(gain.level, gain.experience);
+
+			user.level = gain.level;
+			user.experience = gain.experience;
+
+			next();
+		}
+	);
 };
 
 // Update user by ID
@@ -181,7 +253,7 @@ module.exports.removeLootShard = (req, res, next) => {
 module.exports.removeReputation = (req, res, next) => {
 	const amount = parseInt(req.params.amount) || 1;
 	const costPerLoot = 150;
-	const totalCost = costPerLoot * amount;
+	const totalCost = Number(res.locals.craft_cost) || costPerLoot * amount;
 
 	res.locals.craft_cost = totalCost;
 

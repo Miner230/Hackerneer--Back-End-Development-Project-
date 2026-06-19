@@ -3,6 +3,7 @@ const router = express.Router();
 const delveController = require('../controllers/delveController');
 const userController = require('../controllers/userController');
 const diceController = require('../controllers/diceController');
+const diceCraftController = require('../controllers/diceCraftController');
 const jwtController = require('../controllers/jwtController');
 const lootController = require('../controllers/lootController');
 const responseController = require('../controllers/responseController');
@@ -21,6 +22,7 @@ router.get(
 	'/createInstance',
 	jwtController.verifyToken,
 	userController.readUserById,
+	diceCraftController.attachDelveCraftingData,
 	delveController.readAllMonsters,
 	delveController.readAllMonsterModifiers,
 	delveController.createDelveInstance,
@@ -47,6 +49,7 @@ router.put(
 	diceController.rollDice,
 	delveController.updateDelveInstanceByUserId,
 	delveController.readDelveInstanceById,
+	userController.grantKillExperience,
 	userController.updateUserByDelve,
 	lootController.getAllLoot,
 	lootController.grantMonsterDrops,

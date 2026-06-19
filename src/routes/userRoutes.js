@@ -11,7 +11,8 @@ router.get('/leaderboard', userController.getLeaderboard);
 // Route to get a specific user by userId
 router.get('/userData', 
     verifyToken, 
-    userController.readUserById, 
+    userController.readUserById,
+    userController.attachXpProgress,
     responseController.sendData
 );
 

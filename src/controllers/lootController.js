@@ -1,6 +1,9 @@
 const model = require('../models/lootModel.js');
+const userDiceModel = require('../models/userDiceModel.js');
+const diceGearModel = require('../models/diceGearModel.js');
 const mechanicMap = require('../utils/mechanicMap.js');
-const { bulkRollLoot, insertCallback, rollMonsterLoot } = require('../middleware/lootConfigs.js');
+const { rollDiceItemLevel } = require('../utils/diceItemLevel.js');
+const { bulkRollLoot, insertCallback, rollMonsterLoot, rollMonsterDiceDrop, rollInstanceRarity } = require('../middleware/lootConfigs.js');
 
 // Get all loot items
 module.exports.getAllLoot = (req, res, next) => {
@@ -80,6 +83,11 @@ module.exports.grantMonsterDrops = (req, res, next) => {
 	}
 
 	const dropped = rollResult.items || [];
+	const bonusDice = rollMonsterDiceDrop(lootRows, instance.item_rarity);
+	if (bonusDice) {
+		dropped.push({ ...bonusDice, quantity: 1 });
+	}
+
 	if (dropped.length === 0) {
 		res.locals.droppedLoot = [];
 		return next();
@@ -87,27 +95,121 @@ module.exports.grantMonsterDrops = (req, res, next) => {
 
 	const userId = res.locals.userId;
 	const inserted = [];
+	const lootById = new Map((lootRows || []).map((row) => [row.id, row]));
+
+	function expandDrops(items) {
+		const expanded = [];
+
+		items.forEach((item) => {
+			const lootMeta = lootById.get(item.id);
+			const mechanic = lootMeta?.mechanic;
+			const quantity = Math.max(1, Number(item.quantity) || 1);
+
+			if (mechanic === 'equip_dice') {
+				for (let i = 0; i < quantity; i += 1) {
+					expanded.push({
+						...item,
+						mechanic,
+						quantity: 1,
+					});
+				}
+				return;
+			}
+
+			expanded.push({ ...item, mechanic });
+		});
+
+		return expanded;
+	}
+
+	const expandedDrops = expandDrops(dropped);
+
+	function enrichDrop(item, callback) {
+		if (item.mechanic !== 'equip_dice') {
+			return callback(null, item);
+		}
+
+		diceGearModel.selectByLootId({ lootId: item.id }, (error, rows) => {
+			if (error) return callback(error);
+			const gear = rows[0];
+			callback(null, {
+				...item,
+				image_key: gear?.image_key || 'dice1',
+			});
+		});
+	}
+
+	function grantDrop(item, callback) {
+		if (item.mechanic === 'equip_dice') {
+			const itemLevel = rollDiceItemLevel(instance.level);
+			const instanceRarity = item.instance_rarity || rollInstanceRarity(instance.item_rarity);
+			return userDiceModel.addUserDice(
+				{
+					userId,
+					lootId: item.id,
+					itemLevel,
+					instanceRarity,
+					dropRarityScore: instance.item_rarity,
+				},
+				(error, result) => {
+					if (error) return callback(error);
+					userDiceModel.selectById(
+						{ userId, diceInstanceId: result.insertId },
+						(selectError, diceRows) => {
+							if (selectError) return callback(selectError);
+							const diceRow = diceRows[0];
+							callback(null, {
+								...item,
+								dice_instance_id: result.insertId,
+								item_level: itemLevel,
+								instance_rarity: instanceRarity,
+								socket_count: Number(diceRow?.socket_count) || 0,
+							});
+						}
+					);
+				}
+			);
+		}
+
+		return model.addLoot({ userId, lootId: item.id, quantity: item.quantity }, (error) => {
+			if (error) return callback(error);
+			callback(null, item);
+		});
+	}
 
 	function insertNext(index) {
-		if (index >= dropped.length) {
+		if (index >= expandedDrops.length) {
 			res.locals.droppedLoot = inserted;
 			return next();
 		}
 
-		const item = dropped[index];
-		model.addLoot({ userId, lootId: item.id, quantity: item.quantity }, (error) => {
-			if (error) {
-				console.error('Error granting monster loot:', error);
-				return res.status(500).json(error);
+		const item = expandedDrops[index];
+
+		grantDrop(item, (grantError, grantedItem) => {
+			if (grantError) {
+				console.error('Error granting monster loot:', grantError);
+				return res.status(500).json(grantError);
 			}
 
-			inserted.push({
-				id: item.id,
-				name: item.name,
-				rarity: item.rarity,
-				quantity: item.quantity,
+			enrichDrop(grantedItem, (enrichError, enriched) => {
+				if (enrichError) {
+					console.error('Error enriching monster loot:', enrichError);
+					return res.status(500).json(enrichError);
+				}
+
+				inserted.push({
+					id: enriched.id,
+					dice_instance_id: enriched.dice_instance_id,
+					name: enriched.name,
+					rarity: enriched.rarity,
+					quantity: 1,
+					mechanic: enriched.mechanic,
+					image_key: enriched.image_key,
+					item_level: enriched.item_level,
+					socket_count: enriched.socket_count,
+				});
+				insertNext(index + 1);
 			});
-			insertNext(index + 1);
 		});
 	}
 

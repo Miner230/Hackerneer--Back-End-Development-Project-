@@ -3,10 +3,11 @@ const pool = require('../services/db');
 // Get full inventory for a user
 module.exports.selectInventoryById = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT inventory.*, loot.name, loot.mechanic, loot.stat_description, loot.statline, loot.lore, loot.rarity
+        SELECT inventory.*, loot.name, loot.mechanic, loot.stat_description, loot.statline, loot.lore, loot.rarity, dice_gear.image_key
         FROM inventory
         JOIN loot ON inventory.loot_id = loot.id
-        WHERE inventory.user_id = ?;
+        LEFT JOIN dice_gear ON dice_gear.loot_id = loot.id
+        WHERE inventory.user_id = ? AND loot.mechanic != 'equip_dice';
     `;
 	const VALUES = [data.userId];
 	pool.query(SQLSTATMENT, VALUES, callback);

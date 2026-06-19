@@ -19,6 +19,34 @@ module.exports.addLoot = (data, callback) => {
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
+module.exports.setInventoryQuantity = (data, callback) => {
+	const SQLSTATMENT = `
+        INSERT INTO inventory (user_id, loot_id, quantity)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE quantity = VALUES(quantity);
+    `;
+	const VALUES = [data.userId, data.lootId, data.quantity];
+	pool.query(SQLSTATMENT, VALUES, callback);
+};
+
+module.exports.selectStackableLoot = (callback) => {
+	const SQLSTATMENT = `
+        SELECT id, name, mechanic
+        FROM loot
+        WHERE mechanic != 'equip_dice';
+    `;
+	pool.query(SQLSTATMENT, callback);
+};
+
+module.exports.selectDiceLoot = (callback) => {
+	const SQLSTATMENT = `
+        SELECT id, name
+        FROM loot
+        WHERE mechanic = 'equip_dice';
+    `;
+	pool.query(SQLSTATMENT, callback);
+};
+
 // Modify a stat dynamically based on loot mechanic
 module.exports.modifyByMechanics = (data, callback) => {
 	const SQLSTATMENT = `
@@ -39,4 +67,11 @@ module.exports.decrementQnt = (data, callback) => {
     `;
 	const VALUES = [data.userId, data.lootId];
 	pool.query(SQLSTATMENT, VALUES, callback);
+};
+
+module.exports.selectLootIdByName = (data, callback) => {
+	const SQLSTATMENT = `
+        SELECT id FROM loot WHERE name = ? LIMIT 1;
+    `;
+	pool.query(SQLSTATMENT, [data.name], callback);
 };

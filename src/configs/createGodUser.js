@@ -98,7 +98,7 @@ function upsertUser(passwordHash, callback) {
 			pool.query(
 				`UPDATE user
          SET password = ?, reputation = ?, rep_multi = ?, level = ?, level_up_cost = ?,
-             voidstone_count = ?, loot_shard = ?, number_of_delve_completed = ?
+             voidstone_count = ?, loot_shard = ?, number_of_delve_completed = ?, account_role = 'god'
          WHERE id = ?`,
 				[...userValues, userId],
 				(updateError) => {
@@ -111,8 +111,8 @@ function upsertUser(passwordHash, callback) {
 
 		pool.query(
 			`INSERT INTO user
-       (username, password, reputation, rep_multi, level, level_up_cost, voidstone_count, loot_shard, number_of_delve_completed)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (username, account_role, password, reputation, rep_multi, level, level_up_cost, voidstone_count, loot_shard, number_of_delve_completed)
+       VALUES (?, 'god', ?, ?, ?, ?, ?, ?, ?, ?)`,
 			[USERNAME, ...userValues],
 			(insertError, results) => {
 				if (insertError) return callback(insertError);

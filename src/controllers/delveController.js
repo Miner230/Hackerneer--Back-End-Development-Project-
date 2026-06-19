@@ -118,7 +118,10 @@ module.exports.createDelveInstance = (req, res, next) => {
 	}
 
 	const monsters_data = res.locals.selectedMonsters;
-	const playerStats = computePlayerCombatStats(res.locals.user_data[0]);
+	const playerStats = computePlayerCombatStats(
+		res.locals.user_data[0],
+		res.locals.playerBonuses || {}
+	);
 	const data = {
 		user_id: res.locals.userId,
 		monsters_id: monsters_data.id,
@@ -306,6 +309,14 @@ module.exports.displayCurrentDelveInstance = (req, res, next) => {
 			res.locals.currentInstance.rewards = {
 				type: 'loot_drop',
 				items: res.locals.droppedLoot,
+			};
+		}
+
+		if (res.locals.xpReward) {
+			res.locals.currentInstance.xp = {
+				gained: res.locals.xpReward,
+				levelsGained: res.locals.levelsGained || 0,
+				progress: res.locals.xpProgress || null,
 			};
 		}
 

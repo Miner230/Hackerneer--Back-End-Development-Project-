@@ -21,3 +21,15 @@ module.exports.incrementLevel = (data, callback) => {
 	const VALUES = [data.userId];
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
+
+module.exports.updateLevelAndExperience = (data, callback) => {
+	const SQLSTATMENT = `
+        UPDATE user
+        SET level = ?,
+            experience = ?,
+            rep_multi = ROUND(1.0 + POW(?, 1.2) / 25, 4)
+        WHERE id = ?;
+    `;
+	const VALUES = [data.level, data.experience, data.level, data.userId];
+	pool.query(SQLSTATMENT, VALUES, callback);
+};

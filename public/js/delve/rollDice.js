@@ -111,7 +111,11 @@ function spawnMonsterLootDrop(item, index, total) {
 	drop.className = `monster-loot-drop monster-loot-drop--${rarityKey}`;
 
 	const img = document.createElement('img');
-	img.src = `${LOOT_ITEM_IMG_BASE}${item.id}.png`;
+	img.src = item.image_key
+		? `/assets/dice/${item.image_key}.png`
+		: typeof getLootImageSrc === 'function'
+			? getLootImageSrc(item.id)
+			: `${LOOT_ITEM_IMG_BASE}${item.id}.png`;
 	img.alt = item.name || 'Loot';
 	img.className = 'monster-loot-drop-img';
 	img.loading = 'eager';
@@ -283,7 +287,16 @@ function logTurnSummary(data) {
 	}
 
 	if (rewards?.type === 'loot_drop' && rewards.items?.length) {
-		return logLootDrops(rewards.items);
+		logLootDrops(rewards.items);
+	}
+
+	const xp = instance?.xp;
+	if (xp?.gained) {
+		let xpMsg = `+${xp.gained} XP`;
+		if (xp.levelsGained > 0) {
+			xpMsg += ` — Level up${xp.levelsGained > 1 ? ` ×${xp.levelsGained}` : ''}!`;
+		}
+		appendCombatLog(xpMsg, 'success');
 	}
 
 	return Promise.resolve();

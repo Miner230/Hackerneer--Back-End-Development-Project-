@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 		<title>Hackerneer - Inventory</title>
 
 		<!-- Bootstrap CSS -->
@@ -13,42 +13,72 @@
 		<link href="css/orientation.css" rel="stylesheet" />
 	</head>
 
-	<body class="inventory">
+	<body class="inventory d-flex flex-column">
 		<!-- Navbar -->
 		<div id="navbar-placeholder"></div>
 
 		<!-- Main Content -->
-		<main class="p-4">
-			<div class="container main">
-				<div class="row d-flex">
-					<!-- Loot roller (40%) -->
-					<div class="col-md-5 loot-column">
-						<div class="p-2 text-center">
-							<h4 class="mb-3">Open Loot Shards</h4>
-							<div class="forge-container">
-								<img src="https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/forge-anvil.gif" alt="Forging loot" class="forge-image" />
-								<div class="d-flex align-items-center gap-2 mb-2 mt-5">
-									<!-- Claim input + button row -->
-									<div class="d-flex align-items-center gap-2 mb-2">
-										<button id="decreaseAmount" class="number-btn">−</button>
-										<input type="number" id="claimAmountInput" min="1" max="100" value="1" class="number-input" />
-										<button id="increaseAmount" class="number-btn">+</button>
-										<button id="claimLootBtn" class="btn btn-warning ms-3">Claim Loot</button>
+		<main class="inventory-main flex-grow-1 d-flex flex-column">
+			<div class="inventory-arena">
+				<div class="inventory-layout">
+					<section class="inventory-craft-column">
+						<header class="inventory-panel-header">
+							<h4 class="inventory-panel-title mb-0">Dice Crafting</h4>
+						</header>
+						<div class="inventory-panel-scroll">
+							<div id="equippedDicePanel" class="equipped-dice-panel">
+								<div class="dice-craft-board">
+									<div id="diceCraftHeader" class="dice-craft-header"></div>
+									<div class="dice-socket-stage">
+										<div id="diceSocketColumnLeft" class="dice-socket-column dice-socket-column--left" aria-label="Left sockets"></div>
+										<div id="equippedDiceSlot" class="equipped-dice-slot rarity-common" aria-label="Equipped dice">
+											<span class="equipped-dice-empty">No dice equipped</span>
+										</div>
+										<div id="diceSocketColumnRight" class="dice-socket-column dice-socket-column--right" aria-label="Right sockets"></div>
 									</div>
 								</div>
+								<p class="dice-craft-hint mt-2 mb-0">Drag essences onto the die. <span class="affix-badge affix-badge--prefix">P</span> prefix · <span class="affix-badge affix-badge--suffix">S</span> suffix · drop weighting stones into sockets</p>
+								<div class="dice-implicit-panel mt-3 text-start">
+									<h6><span class="implicit-badge">I</span> Implicits</h6>
+									<ul id="diceImplicitList" class="dice-affix-list"></ul>
+								</div>
+								<div class="dice-effective-stats-panel mt-3 text-start">
+									<h6><span class="effective-badge">Σ</span> Effective Stats</h6>
+									<ul id="diceEffectiveStatsList" class="dice-affix-list"></ul>
+								</div>
+								<div class="dice-affix-panels mt-3 text-start">
+									<div class="dice-affix-panel">
+										<h6><span class="affix-badge affix-badge--prefix">P</span> Prefixes <span class="affix-cap">max 3</span></h6>
+										<ul id="dicePrefixList" class="dice-affix-list"></ul>
+									</div>
+									<div class="dice-affix-panel">
+										<h6><span class="affix-badge affix-badge--suffix">S</span> Suffixes <span class="affix-cap">max 3</span></h6>
+										<ul id="diceSuffixList" class="dice-affix-list"></ul>
+									</div>
+								</div>
+								<button id="unequipDiceBtn" class="btn btn-outline-warning mt-3 d-none">Unequip Dice</button>
 							</div>
 						</div>
-					</div>
+					</section>
 
-					<!-- Inventory (60%) -->
-					<div class="col-md-7 inventory-column">
-						<div class="p-2">
-							<h5>Your Inventory</h5>
+					<section class="inventory-items-column">
+						<header class="inventory-panel-header inventory-panel-header--with-actions">
+							<h5 class="inventory-panel-title mb-0">Your Inventory</h5>
+							<button id="adminGrantKitBtn" type="button" class="btn btn-sm btn-outline-warning admin-grant-btn d-none">
+								Grant Crafting Kit
+							</button>
+						</header>
+						<nav class="inventory-tabs" aria-label="Inventory categories">
+							<button type="button" class="inventory-tab inventory-tab--active" data-tab="all">All</button>
+							<button type="button" class="inventory-tab" data-tab="dice">Dice</button>
+							<button type="button" class="inventory-tab" data-tab="items">Items</button>
+						</nav>
+						<div class="inventory-panel-scroll">
 							<div id="inventoryList">
 								<div id="inventoryGrid" class="inventory-grid"></div>
 							</div>
 						</div>
-					</div>
+					</section>
 				</div>
 			</div>
 			<!-- Use Item Overlay Modal -->
@@ -59,6 +89,17 @@
 					<div class="d-flex justify-content-end">
 						<button id="confirmUseBtn" class="btn btn-danger me-2">Use</button>
 						<button id="cancelUseBtn" class="btn btn-secondary">Cancel</button>
+					</div>
+				</div>
+			</div>
+			<!-- Equip Dice Overlay Modal -->
+			<div id="equipDiceOverlay" class="overlay d-none">
+				<div class="overlay-content paper-box">
+					<h5 id="equipDiceTitle">Equip Dice</h5>
+					<p id="equipDiceDesc" class="mb-3"></p>
+					<div class="d-flex justify-content-end">
+						<button id="confirmEquipBtn" class="btn btn-warning me-2">Equip</button>
+						<button id="cancelEquipBtn" class="btn btn-secondary">Cancel</button>
 					</div>
 				</div>
 			</div>
@@ -93,7 +134,10 @@
 		<script src="js/navbar.js"></script>
 		<script src="js/notification.js"></script>
 		<script src="js/mainUtils.js"></script>
+		<script src="js/lootImages.js"></script>
+		<script src="js/inventory/affixDisplay.js"></script>
 		<script src="js/inventory/getUserInventory.js"></script>
-		<script src="js/inventory/getNewItem.js"></script>
+		<script src="js/inventory/diceCraft.js"></script>
+		<script src="js/inventory/diceEquip.js"></script>
 	</body>
 </html>

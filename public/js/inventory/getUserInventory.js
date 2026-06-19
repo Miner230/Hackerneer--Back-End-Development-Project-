@@ -1,8 +1,79 @@
 // Run when the page loads
 document.addEventListener('DOMContentLoaded', () => {
+	registerInventoryTabs();
 	loadInventoryData();
 	registerInventoryOverlayEvents();
+	registerAdminGrantButton();
 });
+
+const INVENTORY_TAB_STORAGE_KEY = 'inventoryActiveTab';
+let cachedInventory = [];
+let activeInventoryTab = 'all';
+
+function registerInventoryTabs() {
+	const savedTab = localStorage.getItem(INVENTORY_TAB_STORAGE_KEY);
+	if (['all', 'dice', 'items'].includes(savedTab)) {
+		activeInventoryTab = savedTab;
+	}
+
+	document.querySelectorAll('.inventory-tab').forEach((button) => {
+		button.classList.toggle('inventory-tab--active', button.dataset.tab === activeInventoryTab);
+		button.addEventListener('click', () => {
+			const tab = button.dataset.tab;
+			if (!tab || tab === activeInventoryTab) return;
+			activeInventoryTab = tab;
+			localStorage.setItem(INVENTORY_TAB_STORAGE_KEY, tab);
+			document.querySelectorAll('.inventory-tab').forEach((tabButton) => {
+				tabButton.classList.toggle('inventory-tab--active', tabButton.dataset.tab === tab);
+			});
+			renderInventoryItems(cachedInventory);
+		});
+	});
+}
+
+function filterInventoryByTab(items, tab) {
+	if (tab === 'dice') {
+		return items.filter((item) => item.mechanic === 'equip_dice');
+	}
+	if (tab === 'items') {
+		return items.filter((item) => item.mechanic !== 'equip_dice');
+	}
+	return items;
+}
+
+function registerAdminGrantButton() {
+	const button = document.getElementById('adminGrantKitBtn');
+	if (!button) return;
+
+	button.addEventListener('click', () => {
+		if (!token) return;
+		button.disabled = true;
+		fetchMethod(
+			`${currentUrl}/api/inventory/admin/grant-crafting-kit`,
+			(status, data) => {
+				button.disabled = false;
+				if (status === 200) {
+					if (data?.message) {
+						showNotif({ status, message: data.message });
+					}
+					renderInventoryGrid(status, data);
+					return;
+				}
+				const message = data?.message || 'Failed to grant crafting kit.';
+				showNotif({ status, message });
+			},
+			'POST',
+			null,
+			token
+		);
+	});
+}
+
+function syncAdminGrantButton(isAdmin) {
+	const button = document.getElementById('adminGrantKitBtn');
+	if (!button) return;
+	button.classList.toggle('d-none', !isAdmin);
+}
 
 // Fetch and render inventory data
 function loadInventoryData({ useItem = null } = {}) {
@@ -24,9 +95,21 @@ function registerInventoryOverlayEvents() {
 
 // Bind hover and click events for inventory slots
 function bindInventoryEvents(slot, tooltip, item) {
-	slot.addEventListener('mouseenter', () => showTooltip(tooltip));
+	slot.addEventListener('mouseenter', () => showTooltip(tooltip, slot));
 	slot.addEventListener('mouseleave', () => hideTooltip(tooltip));
-	slot.addEventListener('click', () => openUseOverlay(item));
+	slot.addEventListener('click', () => {
+		if (item.mechanic === 'equip_dice') {
+			openEquipOverlay(item);
+			return;
+		}
+		if (typeof window.isCraftableItem === 'function' && window.isCraftableItem(item)) {
+			return;
+		}
+		if (typeof window.isSocketableItem === 'function' && window.isSocketableItem(item)) {
+			return;
+		}
+		openUseOverlay(item);
+	});
 }
 
 // Handle item use confirmation
@@ -40,33 +123,79 @@ function confirmItemUse() {
 function renderInventoryGrid(status, data) {
 	const grid = document.getElementById('inventoryGrid');
 
-	// Check for valid inventory data
+	syncAdminGrantButton(Boolean(data?.is_admin));
+
+	if (typeof renderEquippedDicePanel === 'function') {
+		renderEquippedDicePanel(status === 200 ? data?.equippedDice || null : null);
+	}
+
 	const inventory = data?.inventory;
 	if (status !== 200 || !Array.isArray(inventory)) {
-		grid.innerHTML = `<div class="text-danger text-center">Inventory is empty.</div>`;
+		const message =
+			status === 0
+				? 'Could not reach the server. Check your connection and try again.'
+				: status >= 500
+					? 'Inventory failed to load. Run <code>npm run migrate_all</code> if this persists, then refresh.'
+					: data?.message || data?.sqlMessage || 'Inventory is empty.';
+		grid.innerHTML = `<div class="text-danger text-center">${message}</div>`;
+		cachedInventory = [];
 		return;
 	}
 
+	cachedInventory = inventory;
+	renderInventoryItems(inventory);
+}
+
+function renderInventoryItems(inventory) {
+	const grid = document.getElementById('inventoryGrid');
+	if (!grid) return;
+
 	grid.innerHTML = '';
 	const order = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
+	const filtered = filterInventoryByTab(
+		inventory.filter((i) => i.quantity > 0),
+		activeInventoryTab
+	);
 
-	// Sort by rarity and render each slot
-	inventory
-		.filter((i) => i.quantity > 0)
+	if (!filtered.length) {
+		const emptyLabel =
+			activeInventoryTab === 'dice'
+				? 'No dice in this tab.'
+				: activeInventoryTab === 'items'
+					? 'No items in this tab.'
+					: 'Inventory is empty.';
+		grid.innerHTML = `<div class="text-muted text-center">${emptyLabel}</div>`;
+		return;
+	}
+
+	filtered
 		.sort((a, b) => order[b.rarity?.toLowerCase()] - order[a.rarity?.toLowerCase()])
-		.forEach((item) => createInventorySlot(item, grid));
+		.forEach((item) => {
+			try {
+				createInventorySlot(item, grid);
+			} catch (error) {
+				console.error('Failed to render inventory slot:', item?.name, error);
+			}
+		});
 }
 
 // Create a single inventory slot
 function createInventorySlot(item, grid) {
 	const rarity = `rarity-${(item.rarity || 'common').toLowerCase()}`;
+	const isDice = item.mechanic === 'equip_dice';
 	const slot = document.createElement('div');
-	slot.className = `inventory-slot inventory-entry ${rarity}`;
+	slot.className = `inventory-slot inventory-entry ${rarity}${isDice ? ' inventory-slot--dice' : ''}`;
 	slot.dataset.name = item.name.toLowerCase();
 
 	const img = document.createElement('img');
-	img.src = `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${item.loot_id}.png`;
+	img.src =
+		isDice && typeof getDiceImageSrc === 'function'
+			? getDiceImageSrc(item)
+			: typeof getLootImageSrc === 'function'
+				? getLootImageSrc(item.loot_id)
+				: `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${item.loot_id}.png`;
 	img.alt = item.name;
+	img.draggable = false;
 
 	const count = document.createElement('div');
 	count.className = 'inventory-count';
@@ -75,43 +204,118 @@ function createInventorySlot(item, grid) {
 	const tooltip = buildTooltip(item, rarity);
 
 	slot.appendChild(img);
-	if (item.quantity > 1) slot.appendChild(count);
+	if (!isDice && item.quantity > 1) slot.appendChild(count);
 	slot.appendChild(tooltip);
 	grid.appendChild(slot);
 
 	bindInventoryEvents(slot, tooltip, item);
+	if (typeof bindCraftableInventorySlot === 'function') {
+		bindCraftableInventorySlot(slot, item);
+	}
+	if (typeof bindSocketableInventorySlot === 'function') {
+		bindSocketableInventorySlot(slot, item);
+	}
+	if (typeof bindDiceInventorySlot === 'function') {
+		bindDiceInventorySlot(slot, item);
+	}
 }
 
 // Build tooltip element for an inventory slot
 function buildTooltip(item, rarity) {
 	const tip = document.createElement('div');
 	tip.className = `tooltip-box ${rarity}`;
+
+	const isCraftable =
+		typeof window.isCraftableItem === 'function' && window.isCraftableItem(item);
+	const isSocketable =
+		typeof window.isSocketableItem === 'function' && window.isSocketableItem(item);
+	const isDice = item.mechanic === 'equip_dice';
+	const affixType = isCraftable ? getAffixTypeForMechanic(item.mechanic) : null;
+	const flavor = isCraftable ? getAffixFlavorName(item.mechanic) : '';
+
+	const title = item.name;
+	const statLine = item.stat_description || '';
+
+	const implicitHtml =
+		isDice && Array.isArray(item.implicits) && item.implicits.length
+			? `<div class="tooltip-section-label">Implicits</div><ul class="tooltip-affix-list tooltip-implicit-list">${renderImplicitListHtml(item.implicits)}</ul>`
+			: '';
+
+	const affixHtml =
+		isDice && Array.isArray(item.modifiers) && item.modifiers.length
+			? `<div class="tooltip-section-label">Crafted</div><ul class="tooltip-affix-list">${renderTooltipAffixListHtml(item.modifiers)}</ul>`
+			: '';
+
+	const socketHtml =
+		isDice && Number(item.socket_count) > 0
+			? `<div class="tooltip-section-label">Sockets (${item.sockets?.length || 0}/${item.socket_count})</div><ul class="tooltip-affix-list tooltip-socket-list">${renderSocketListHtml(item.sockets || [], item.socket_count, 'Empty')}</ul>`
+			: '';
+
+	const actionHtml = isDice
+		? '<div class="tooltip-action">Click to equip · drop essences to craft · drop stones to socket</div>'
+		: isCraftable
+			? '<div class="tooltip-action">Drag onto a die to apply</div>'
+			: isSocketable
+				? '<div class="tooltip-action">Drag onto a die to socket</div>'
+				: '';
+
 	tip.innerHTML = `
-		<div class="card-title">${item.name}</div>
-		<div class="card-text">${item.stat_description}</div>
-		<div class="card-text fst-italic">${item.lore}</div>
-		<div class="card-text">${item.rarity}</div>
+		${affixType ? formatAffixBadge(affixType) : ''}
+		<div class="tooltip-title">${title}</div>
+		${isDice ? `<div class="tooltip-stat">Item Level ${item.item_level || 1}</div>` : ''}
+		${isDice ? `<div class="tooltip-stat">Instance Rarity ${item.instance_rarity || item.rarity || 'Common'}</div>` : ''}
+		${isDice && item.loot_rarity && item.loot_rarity !== (item.instance_rarity || item.rarity) ? `<div class="tooltip-stat">Die Type ${item.loot_rarity}</div>` : ''}
+		${isDice && Number(item.socket_count) > 0 ? `<div class="tooltip-stat">${item.socket_count} Socket${item.socket_count > 1 ? 's' : ''}</div>` : ''}
+		${statLine ? `<div class="tooltip-stat">${statLine}</div>` : ''}
+		${isCraftable && flavor ? `<div class="tooltip-flavor">${flavor}</div>` : ''}
+		${implicitHtml}
+		${affixHtml}
+		${socketHtml}
+		<div class="tooltip-rarity">${item.rarity || ''}</div>
+		${actionHtml}
 	`;
 	return tip;
 }
 
-// Show tooltip
-function showTooltip(tip) {
+// Position tooltip within the viewport
+function showTooltip(tip, slot) {
 	if (window.innerWidth <= 768) return;
-	tip.style.left = '70px';
+
+	const margin = 10;
+	const gap = 8;
+	const slotRect = slot.getBoundingClientRect();
+
 	tip.style.display = 'block';
 	tip.style.visibility = 'hidden';
+	tip.style.position = 'fixed';
+	tip.style.left = '0';
+	tip.style.top = '0';
+	tip.style.right = 'auto';
+	tip.style.bottom = 'auto';
+	tip.style.maxHeight = `${window.innerHeight - margin * 2}px`;
+	tip.style.overflowY = 'auto';
 
 	requestAnimationFrame(() => {
-		const rect = tip.getBoundingClientRect();
-		if (rect.left + rect.width > window.innerWidth) {
-			tip.style.left = 'auto';
-			tip.style.right = '70px';
+		const tipRect = tip.getBoundingClientRect();
+		let left = slotRect.right + gap;
+		let top = slotRect.top;
+
+		if (left + tipRect.width > window.innerWidth - margin) {
+			left = slotRect.left - tipRect.width - gap;
 		}
-		tip.style.top =
-			rect.top + rect.height > window.innerHeight
-				? `-${rect.bottom - window.innerHeight + 20}px`
-				: '0';
+		if (left < margin) {
+			left = Math.max(margin, (window.innerWidth - tipRect.width) / 2);
+		}
+
+		if (top + tipRect.height > window.innerHeight - margin) {
+			top = window.innerHeight - tipRect.height - margin;
+		}
+		if (top < margin) {
+			top = margin;
+		}
+
+		tip.style.left = `${Math.round(left)}px`;
+		tip.style.top = `${Math.round(top)}px`;
 		tip.style.visibility = 'visible';
 	});
 }
@@ -119,9 +323,13 @@ function showTooltip(tip) {
 // Hide tooltip
 function hideTooltip(tip) {
 	if (window.innerWidth <= 768) return;
+	tip.style.position = '';
 	tip.style.left = '';
 	tip.style.right = '';
 	tip.style.top = '';
+	tip.style.bottom = '';
+	tip.style.maxHeight = '';
+	tip.style.overflowY = '';
 	tip.style.visibility = '';
 	tip.style.display = '';
 }
@@ -155,3 +363,6 @@ function useItemCallback(item) {
 		}
 	};
 }
+
+window.showInventoryTooltip = showTooltip;
+window.hideInventoryTooltip = hideTooltip;

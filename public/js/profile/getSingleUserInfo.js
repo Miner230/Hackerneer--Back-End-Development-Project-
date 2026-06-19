@@ -1,15 +1,15 @@
 // Load user info and render profile card
-function computePlayerMaxHealth(user) {
+function computePlayerMaxHealth(user, playerBonuses = {}) {
 	const level = Math.max(1, Number(user?.level || 1));
 	const baseMaxHealth = Math.floor(100 + level * 15);
-	const flatHealth = Number(user?.player_flat_health || 0);
-	const maxHealthPercent = Number(user?.player_max_health_percent || 0);
+	const flatHealth = Number(playerBonuses.player_flat_health || 0);
+	const maxHealthPercent = Number(playerBonuses.player_max_health_percent || 0);
 
 	return Math.floor((baseMaxHealth + flatHealth) * (1 + maxHealthPercent / 100));
 }
 
-function computePlayerSpeed(user) {
-	const speedBonus = Number(user?.player_speed_bonus || 0);
+function computePlayerSpeed(playerBonuses = {}) {
+	const speedBonus = Number(playerBonuses.player_speed_bonus || 0);
 	return Math.max(1, 1 + speedBonus);
 }
 
@@ -28,9 +28,11 @@ function loadUserInfo(data) {
 
 	// Get user object
 	const user = data.user_data[0];
-	const totalHealth = computePlayerMaxHealth(user);
-	const lifeRegen = Number(user.player_life_regen || 0);
-	const playerSpeed = computePlayerSpeed(user);
+	const xpProgress = data.xpProgress || { current: user.experience || 0, required: 100, percent: 0 };
+	const playerBonuses = data.playerBonuses || {};
+	const totalHealth = computePlayerMaxHealth(user, playerBonuses);
+	const lifeRegen = Number(playerBonuses.player_life_regen || 0);
+	const playerSpeed = computePlayerSpeed(playerBonuses);
 
 	// Store username and level in localStorage
 	localStorage.setItem('username', user.username);
@@ -47,6 +49,15 @@ function loadUserInfo(data) {
 		<ul class="list-group list-group-flush bg-transparent stat-list">
 		<li class="list-group-item d-flex justify-content-between">Username<span>${user.username}</span></li>
 		<li class="list-group-item d-flex justify-content-between text-success">Level<span id="user-level">${user.level}</span></li>
+		<li class="list-group-item profile-xp-row">
+			<div class="profile-xp-block">
+				<div class="profile-xp-label">Experience</div>
+				<div class="profile-xp-values">${formatProfileStat(xpProgress.current)} / ${formatProfileStat(xpProgress.required)}</div>
+				<div class="profile-xp-bar" aria-label="Experience progress">
+					<div class="profile-xp-fill" style="width: ${xpProgress.percent}%"></div>
+				</div>
+			</div>
+		</li>
 		<li class="list-group-item d-flex justify-content-between text-info">Total Health ♥<span>${formatProfileStat(totalHealth)}</span></li>
 		<li class="list-group-item d-flex justify-content-between text-info">Health Regen ✚<span>${formatProfileStat(lifeRegen)} / turn</span></li>
 		<li class="list-group-item d-flex justify-content-between text-primary">Speed ⚡<span>${formatProfileStat(playerSpeed)} / turn</span></li>
@@ -54,18 +65,11 @@ function loadUserInfo(data) {
 		<li class="list-group-item d-flex justify-content-between text-danger">Rep Multiplier<span>${user.rep_multi}X</span></li>
 		<li class="list-group-item d-flex justify-content-between rainbow-text">Loot Shards<span>${user.loot_shard}</span></li>
 		</ul>
-		<div class="text-center mt-3">
-		<button id="levelUpBtn" class="btn level-btn px-4 py-2 btn-success">Level Up</button>
-		</div>
       </div>
     </div>  
-  `;
+	`;
 
-	// Add event listener for level up button
-	const levelUpBtn = document.getElementById('levelUpBtn');
-	if (levelUpBtn) {
-		levelUpBtn.addEventListener('click', () => levelUpUser());
-	}
+	// Profile levels up from delve kill XP automatically.
 }
 
 // Reload user info from API
