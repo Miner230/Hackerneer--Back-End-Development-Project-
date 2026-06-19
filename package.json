@@ -30,6 +30,7 @@
 		"migrate_loot_descriptions": "node src/configs/migrateLootDescriptions.js",
 		"migrate_haste_affix_suffix": "node src/configs/migrateHasteAffixSuffix.js",
 		"migrate_dice_instance_rarity": "node src/configs/migrateDiceInstanceRarity.js",
+		"migrate_user_account_role": "node src/configs/migrateUserAccountRole.js",
 		"migrate_all": "npm run migrate_delve_combat && npm run migrate_delve_speed && npm run migrate_monster_modifiers && npm run migrate_remove_no_of_rolls_loot && npm run migrate_monster_loot_drops && npm run migrate_delve_modifier_stacks && npm run migrate_player_essence_stats && npm run migrate_player_speed_essence && npm run migrate_dice_gear && npm run migrate_dice_modifiers && npm run migrate_user_dice_instances && npm run migrate_dice_affix_types && npm run migrate_dice_drop_slot_unique && npm run migrate_dice_flat_damage && npm run migrate_dice_item_level && npm run migrate_player_experience && npm run migrate_dice_sockets && npm run migrate_dice_flat_damage_essences && npm run migrate_dice_flat_damage_ranges && npm run migrate_haste_affix_suffix && npm run migrate_dice_instance_rarity && npm run migrate_user_account_role && npm run migrate_loot_descriptions",
 		"create_god_user": "node src/configs/createGodUser.js",
 		"format": "prettier --write ."
