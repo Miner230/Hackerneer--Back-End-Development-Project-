@@ -1,6 +1,21 @@
 let pendingEssenceLootId = null;
 let craftRequestInFlight = false;
 
+function getEquippedDiceId(equippedDice) {
+	return equippedDice?.id ?? equippedDice?.dice_instance_id;
+}
+
+function getEquippedSocketCount(equippedDice) {
+	return Math.max(0, Number(equippedDice?.sc ?? equippedDice?.socket_count) || 0);
+}
+
+function getEquippedSockets(equippedDice) {
+	const raw = equippedDice?.socks || equippedDice?.sockets || [];
+	return raw.map((entry) =>
+		typeof expandSocketTuple === 'function' ? expandSocketTuple(entry) : entry
+	);
+}
+
 function applyEssenceToDie(diceInstanceId, essenceLootId = pendingEssenceLootId) {
 	if (!essenceLootId) {
 		showNotif({ status: 400, message: 'Select an essence first, then drop it on a die.' });
@@ -221,18 +236,18 @@ function renderSocketSlots(equippedDice) {
 	leftColumn.innerHTML = '';
 	rightColumn.innerHTML = '';
 
-	if (!equippedDice?.dice_instance_id) return;
+	const diceInstanceId = getEquippedDiceId(equippedDice);
+	if (!diceInstanceId) return;
 
-	const socketCount = Math.max(0, Number(equippedDice.socket_count) || 0);
+	const socketCount = getEquippedSocketCount(equippedDice);
 	if (socketCount <= 0) return;
 
 	const socketsByIndex = new Map();
-	(equippedDice.sockets || []).forEach((socket) => {
+	getEquippedSockets(equippedDice).forEach((socket) => {
 		socketsByIndex.set(Number(socket.slot_index), socket);
 	});
 
 	const { leftCount, rightCount } = getSocketColumnSplit(socketCount);
-	const diceInstanceId = equippedDice.dice_instance_id;
 
 	for (let index = 0; index < leftCount; index += 1) {
 		const socket = socketsByIndex.get(index);
@@ -259,17 +274,20 @@ function clearSocketSlots() {
 function bindCraftableInventorySlot(slot, item) {
 	if (!isCraftableItem(item)) return;
 
+	const lootId = item.lid ?? item.loot_id;
+	const mechanic = item.m ?? item.mechanic;
+
 	slot.draggable = true;
 	slot.classList.add('inventory-slot--craftable');
 	if (typeof appendAffixBadgeToSlot === 'function') {
-		appendAffixBadgeToSlot(slot, item.mechanic);
+		appendAffixBadgeToSlot(slot, mechanic);
 	}
 
 	slot.addEventListener('dragstart', (event) => {
-		pendingEssenceLootId = item.loot_id;
-		const lootId = String(item.loot_id);
-		event.dataTransfer.setData('text/essence-loot-id', lootId);
-		event.dataTransfer.setData('text/plain', lootId);
+		pendingEssenceLootId = lootId;
+		const lootIdText = String(lootId);
+		event.dataTransfer.setData('text/essence-loot-id', lootIdText);
+		event.dataTransfer.setData('text/plain', lootIdText);
 		event.dataTransfer.effectAllowed = 'copy';
 		slot.classList.add('inventory-slot--dragging');
 	});
@@ -282,13 +300,15 @@ function bindCraftableInventorySlot(slot, item) {
 function bindSocketableInventorySlot(slot, item) {
 	if (!isSocketableItem(item)) return;
 
+	const lootId = item.lid ?? item.loot_id;
+
 	slot.draggable = true;
 	slot.classList.add('inventory-slot--socketable');
 
 	slot.addEventListener('dragstart', (event) => {
-		const lootId = String(item.loot_id);
-		event.dataTransfer.setData('text/socket-loot-id', lootId);
-		event.dataTransfer.setData('text/plain', lootId);
+		const lootIdText = String(lootId);
+		event.dataTransfer.setData('text/socket-loot-id', lootIdText);
+		event.dataTransfer.setData('text/plain', lootIdText);
 		event.dataTransfer.effectAllowed = 'copy';
 		slot.classList.add('inventory-slot--dragging');
 	});
@@ -299,9 +319,9 @@ function bindSocketableInventorySlot(slot, item) {
 }
 
 function bindDiceInventorySlot(slot, item) {
-	if (item.mechanic !== 'equip_dice') return;
+	if (item.m !== 'equip_dice' && item.mechanic !== 'equip_dice') return;
 	slot.classList.add('dice-drop-target');
-	bindDieDropTarget(slot, item.dice_instance_id);
+	bindDieDropTarget(slot, item.id ?? item.dice_instance_id);
 }
 
 function renderImplicitList(implicits = []) {
@@ -310,27 +330,27 @@ function renderImplicitList(implicits = []) {
 	implicitList.innerHTML = window.renderImplicitListHtml(implicits, 'No implicits');
 }
 
-function renderAffixLists(modifiers = []) {
+function renderAffixLists(equippedDice) {
 	const prefixList = document.getElementById('dicePrefixList');
 	const suffixList = document.getElementById('diceSuffixList');
-	if (!prefixList || !suffixList || typeof window.renderAffixListHtml !== 'function') return;
+	if (!prefixList || !suffixList) return;
 
-	const prefixes = (modifiers || []).filter((modifier) => modifier.affix_type === 'prefix');
-	const suffixes = (modifiers || []).filter((modifier) => modifier.affix_type === 'suffix');
+	const pre = equippedDice?.pre || [];
+	const suf = equippedDice?.suf || [];
 
+	if (typeof window.renderTuplePanelListHtml === 'function') {
+		prefixList.innerHTML = window.renderTuplePanelListHtml(pre, 'No prefixes');
+		suffixList.innerHTML = window.renderTuplePanelListHtml(suf, 'No suffixes');
+		return;
+	}
+
+	if (typeof window.renderAffixListHtml !== 'function') return;
+
+	const modifiers = equippedDice?.modifiers || [];
+	const prefixes = modifiers.filter((modifier) => modifier.affix_type === 'prefix');
+	const suffixes = modifiers.filter((modifier) => modifier.affix_type === 'suffix');
 	prefixList.innerHTML = window.renderAffixListHtml(prefixes, 'No prefixes');
 	suffixList.innerHTML = window.renderAffixListHtml(suffixes, 'No suffixes');
-}
-
-function renderEffectiveStats(equippedDice) {
-	const list = document.getElementById('diceEffectiveStatsList');
-	if (!list || typeof window.renderEffectiveStatListHtml !== 'function') return;
-
-	const rows = equippedDice?.effective_stats || [];
-	list.innerHTML = window.renderEffectiveStatListHtml(
-		rows,
-		equippedDice ? 'No stat bonuses yet' : 'Equip a die to view stats'
-	);
 }
 
 function syncCraftingPanelFromResponse(data) {
@@ -340,9 +360,8 @@ function syncCraftingPanelFromResponse(data) {
 }
 
 function syncCraftingBoard(equippedDice) {
-	renderImplicitList(equippedDice?.implicits || []);
-	renderEffectiveStats(equippedDice);
-	renderAffixLists(equippedDice?.modifiers || []);
+	renderImplicitList(equippedDice?.imp || equippedDice?.implicits || []);
+	renderAffixLists(equippedDice);
 	renderSocketSlots(equippedDice);
 }
 
@@ -354,7 +373,6 @@ window.bindCraftableInventorySlot = bindCraftableInventorySlot;
 window.bindSocketableInventorySlot = bindSocketableInventorySlot;
 window.bindDiceInventorySlot = bindDiceInventorySlot;
 window.renderImplicitList = renderImplicitList;
-window.renderEffectiveStats = renderEffectiveStats;
 window.syncCraftingPanelFromResponse = syncCraftingPanelFromResponse;
 window.syncCraftingBoard = syncCraftingBoard;
 window.renderAffixLists = renderAffixLists;

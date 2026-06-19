@@ -8,7 +8,7 @@ module.exports.addUserDice = (data, callback) => {
         VALUES (?, ?, ?, ?, ?);
     `;
 	const socketCount = Number.isFinite(data.socketCount)
-		? Math.max(1, Math.min(6, data.socketCount))
+		? Math.max(0, Math.min(6, data.socketCount))
 		: rollDiceSocketCount();
 	pool.query(
 		SQLSTATMENT,
@@ -32,6 +32,7 @@ module.exports.selectByUserId = (data, callback) => {
             user_dice.item_level,
             user_dice.socket_count,
             user_dice.drop_rarity_score,
+            user_dice.stats_snapshot,
             user_dice.created_at,
             loot.name,
             loot.mechanic,
@@ -71,6 +72,7 @@ module.exports.selectById = (data, callback) => {
             user_dice.item_level,
             user_dice.socket_count,
             user_dice.drop_rarity_score,
+            user_dice.stats_snapshot,
             user_dice.created_at,
             loot.name,
             loot.mechanic,
@@ -104,6 +106,16 @@ module.exports.selectById = (data, callback) => {
         WHERE user_dice.id = ? AND user_dice.user_id = ?;
     `;
 	pool.query(SQLSTATMENT, [data.diceInstanceId, data.userId], callback);
+};
+
+module.exports.updateStatsSnapshot = (data, callback) => {
+	const SQLSTATMENT = `
+        UPDATE user_dice
+        SET stats_snapshot = ?
+        WHERE id = ? AND user_id = ?;
+    `;
+	const payload = typeof data.snapshot === 'string' ? data.snapshot : JSON.stringify(data.snapshot);
+	pool.query(SQLSTATMENT, [payload, data.diceInstanceId, data.userId], callback);
 };
 
 module.exports.deleteById = (data, callback) => {

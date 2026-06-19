@@ -47,9 +47,54 @@ function updatePlayerHealthUI(currentHealth, maxHealthOverride) {
 	}
 }
 
+const DELVE_PLAYER_LEVEL_KEY = 'delvePlayerLevel';
+
+function getDelvePlayerLevel(delve) {
+	const sessionLevel = sessionStorage.getItem(DELVE_PLAYER_LEVEL_KEY);
+	if (sessionLevel) return sessionLevel;
+	if (delve?.player_level != null) return delve.player_level;
+	const storedLevel = localStorage.getItem('level');
+	return storedLevel || '?';
+}
+
+function syncDelvePlayerLevel(level) {
+	const parsed = Number(level);
+	if (!Number.isFinite(parsed) || parsed < 1) return;
+
+	const levelText = String(parsed);
+	sessionStorage.setItem(DELVE_PLAYER_LEVEL_KEY, levelText);
+	localStorage.setItem('level', levelText);
+
+	const playerLevel = document.getElementById('playerLevel');
+	if (playerLevel) playerLevel.textContent = `Lv. ${levelText}`;
+
+	if (typeof updateNavbarProfileLabel === 'function') {
+		updateNavbarProfileLabel();
+	}
+}
+
+function applyDelveXpGain(xp) {
+	if (!xp?.gained) return;
+
+	if (xp.level != null) {
+		syncDelvePlayerLevel(xp.level);
+	}
+
+	const levelsGained = Number(xp.levelsGained) || 0;
+	if (levelsGained <= 0 || typeof showConfettiOverlay !== 'function') return;
+
+	const newLevel = xp.level ?? getDelvePlayerLevel();
+	const message =
+		levelsGained > 1 ? `Level up ×${levelsGained}! Lv. ${newLevel}` : `Level up! Lv. ${newLevel}`;
+	showConfettiOverlay(message);
+}
+
 function updatePlayerUI(delve) {
 	const username = localStorage.getItem('username') || 'Hacker';
-	const userLevel = localStorage.getItem('level') || delve.player_level || '?';
+	if (delve?.player_level != null) {
+		syncDelvePlayerLevel(delve.player_level);
+	}
+	const userLevel = getDelvePlayerLevel(delve);
 
 	const playerName = document.getElementById('playerName');
 	const playerLevel = document.getElementById('playerLevel');
@@ -72,6 +117,10 @@ function updatePlayerUI(delve) {
 
 	updateTurnUI(delve);
 }
+
+window.syncDelvePlayerLevel = syncDelvePlayerLevel;
+window.applyDelveXpGain = applyDelveXpGain;
+window.getDelvePlayerLevel = getDelvePlayerLevel;
 
 function getMonsterStartHealthKey(delveId) {
 	return delveId ? `monsterStartHealth_${delveId}` : 'monsterStartHealth';
@@ -316,6 +365,7 @@ function startDelve() {
 		sessionStorage.removeItem('maxPlayerHealth');
 		sessionStorage.removeItem('delveLogInitialized');
 		sessionStorage.removeItem('delvePrevHealth');
+		sessionStorage.removeItem(DELVE_PLAYER_LEVEL_KEY);
 
 		const rollBtn = document.querySelector('.roll');
 		if (rollBtn) {
@@ -333,51 +383,16 @@ function startDelve() {
 }
 
 function enterDelveFullscreen() {
-	document.body.classList.add('delve-fullscreen');
-
-	const target = document.getElementById('mainContent') || document.documentElement;
-	const request =
-		target.requestFullscreen?.() ||
-		target.webkitRequestFullscreen?.() ||
-		target.msRequestFullscreen?.();
-
-	if (request?.catch) {
-		request.catch(() => {});
-	}
-
-	if (window.MobileLandscape?.lock) {
-		window.MobileLandscape.lock();
-	}
+	GameFullscreen.enter('delve-fullscreen', 'mainContent');
 }
 
 function exitDelveFullscreen() {
-	document.body.classList.remove('delve-fullscreen');
-
-	if (document.fullscreenElement || document.webkitFullscreenElement) {
-		const exit =
-			document.exitFullscreen?.() ||
-			document.webkitExitFullscreen?.() ||
-			document.msExitFullscreen?.();
-		if (exit?.catch) exit.catch(() => {});
-	}
-
-	if (window.MobileLandscape?.unlock) {
-		window.MobileLandscape.unlock();
-	}
+	GameFullscreen.exit('delve-fullscreen');
 }
 
 function syncDelveFullscreenState() {
-	const isFullscreen = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
 	const mainVisible = !document.getElementById('mainContent')?.classList.contains('d-none');
-
-	if (isFullscreen && mainVisible) {
-		document.body.classList.add('delve-fullscreen');
-		return;
-	}
-
-	if (!isFullscreen && mainVisible) {
-		document.body.classList.add('delve-fullscreen');
-	}
+	GameFullscreen.sync('delve-fullscreen', mainVisible);
 }
 
 function exitDelve() {
@@ -389,7 +404,7 @@ function exitDelve() {
 	sessionStorage.removeItem('delveLogInitialized');
 	sessionStorage.removeItem('delvePrevHealth');
 
-	window.location.href = 'profile.html';
+	window.location.href = 'world.html';
 }
 
 //close delve overlay

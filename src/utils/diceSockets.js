@@ -12,7 +12,7 @@ function isSocketableMechanic(mechanic) {
 }
 
 function rollDiceSocketCount() {
-	return Math.floor(Math.random() * 6) + 1;
+	return Math.floor(Math.random() * 7);
 }
 
 function formatSocketRow(row) {

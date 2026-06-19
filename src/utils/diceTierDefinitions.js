@@ -124,10 +124,10 @@ function buildDiceGearStatDescription(familyName, gear) {
 	}
 
 	if (familyName === 'Basic Die' || parts.length === 0) {
-		return 'Equip for delves - balanced faces - item level on drop - 1-6 sockets';
+		return 'Equip for delves - balanced faces - item level on drop - 0-6 sockets';
 	}
 
-	return `Equip - ${parts.join(' · ')} - item level on drop - 1-6 sockets`;
+	return `Equip - ${parts.join(' · ')} - item level on drop - 0-6 sockets`;
 }
 
 function getDiceFamiliesForDrops() {

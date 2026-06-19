@@ -1,0 +1,281 @@
+/* ==============================
+   World Map — Fullscreen hub
+============================== */
+html:has(body.world) {
+	font-size: 16px;
+}
+
+body.world {
+	background-color: #08080c;
+	color: #eee;
+	overflow: hidden;
+	height: 100dvh;
+	max-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+}
+
+body.world #footer-placeholder {
+	display: none;
+}
+
+body.world #navbar-placeholder {
+	flex-shrink: 0;
+}
+
+body.world .navbar {
+	padding-top: 0.2rem;
+	padding-bottom: 0.2rem;
+}
+
+body.world .navbar .logo {
+	max-height: 34px !important;
+}
+
+body.world main {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+body.world.world-fullscreen {
+	overflow: hidden;
+}
+
+body.world.world-fullscreen #navbar-placeholder,
+body.world.world-fullscreen #footer-placeholder {
+	display: none !important;
+}
+
+body.world.world-fullscreen main {
+	height: 100dvh;
+	max-height: 100dvh;
+}
+
+body.world.world-fullscreen .world-arena {
+	position: fixed;
+	inset: 0;
+	z-index: 9000;
+	width: 100vw;
+	height: 100dvh;
+	max-height: 100dvh;
+	padding:
+		env(safe-area-inset-top, 0)
+		env(safe-area-inset-right, 0)
+		env(safe-area-inset-bottom, 0)
+		env(safe-area-inset-left, 0);
+	box-sizing: border-box;
+}
+
+.world-arena {
+	flex: 1;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+}
+
+.world-hud {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.35rem 0.75rem;
+	background: linear-gradient(180deg, rgba(8, 8, 12, 0.94) 0%, rgba(8, 8, 12, 0.72) 100%);
+	border-bottom: 1px solid rgba(255, 210, 120, 0.18);
+	z-index: 2;
+}
+
+.world-exit-btn {
+	flex-shrink: 0;
+	width: 32px;
+	height: 32px;
+	border: 1px solid rgba(255, 120, 120, 0.45);
+	border-radius: 8px;
+	background: rgba(80, 20, 20, 0.55);
+	color: #ffb3b3;
+	font-size: 1rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+}
+
+.world-exit-btn:hover {
+	background: rgba(120, 30, 30, 0.75);
+}
+
+.world-title {
+	margin: 0;
+	font-size: clamp(1rem, 2.5vw, 1.35rem);
+	color: #ffe08a;
+	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+	letter-spacing: 0.04em;
+}
+
+.world-map-stage {
+	position: relative;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+}
+
+.world-map-backdrop {
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(circle at 18% 62%, rgba(255, 170, 80, 0.16) 0%, transparent 34%),
+		radial-gradient(circle at 78% 38%, rgba(120, 80, 255, 0.18) 0%, transparent 36%),
+		linear-gradient(180deg, rgba(12, 18, 28, 0.35) 0%, rgba(4, 6, 10, 0.75) 100%),
+		url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/bgdelve.png');
+	background-size: cover;
+	background-position: center;
+	filter: saturate(0.85) brightness(0.72);
+}
+
+.world-map-paths {
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(circle at 30% 58%, rgba(255, 210, 120, 0.08) 0%, transparent 24%),
+		radial-gradient(circle at 72% 42%, rgba(180, 140, 255, 0.1) 0%, transparent 26%);
+	pointer-events: none;
+}
+
+.world-poi {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.35rem;
+	width: clamp(120px, 16vw, 180px);
+	padding: 0.65rem 0.5rem 0.75rem;
+	border: 2px solid rgba(255, 210, 120, 0.45);
+	border-radius: 14px;
+	background: rgba(8, 8, 14, 0.78);
+	color: #fff;
+	text-decoration: none;
+	text-align: center;
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+	transition:
+		transform 0.2s ease,
+		border-color 0.2s ease,
+		box-shadow 0.2s ease,
+		background 0.2s ease;
+	z-index: 3;
+}
+
+.world-poi:hover,
+.world-poi:focus-visible {
+	transform: translateY(-4px) scale(1.03);
+	border-color: rgba(255, 224, 138, 0.85);
+	box-shadow: 0 14px 32px rgba(255, 180, 80, 0.22);
+	background: rgba(18, 14, 10, 0.92);
+	color: #fff;
+}
+
+.world-poi-marker {
+	width: clamp(52px, 8vw, 72px);
+	height: clamp(52px, 8vw, 72px);
+	border-radius: 50%;
+	border: 2px solid rgba(255, 224, 138, 0.55);
+	background-position: center;
+	background-size: cover;
+	box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.45);
+}
+
+.world-poi--smithy {
+	left: 16%;
+	top: 52%;
+	transform: translate(-50%, -50%);
+}
+
+.world-poi--smithy .world-poi-marker {
+	background-image: url('https://media.tenor.com/15913570/forge-anvil-hammer-gif.gif');
+	background-color: #2a1810;
+}
+
+.world-poi--smithy:hover,
+.world-poi--smithy:focus-visible {
+	transform: translate(-50%, calc(-50% - 4px)) scale(1.03);
+}
+
+.world-poi--dungeon {
+	left: 78%;
+	top: 44%;
+	transform: translate(-50%, -50%);
+}
+
+.world-poi--dungeon .world-poi-marker {
+	background-image: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/bgdelve.png');
+}
+
+.world-poi--dungeon:hover,
+.world-poi--dungeon:focus-visible {
+	transform: translate(-50%, calc(-50% - 4px)) scale(1.03);
+}
+
+.world-poi-label {
+	font-size: clamp(1rem, 2.2vw, 1.25rem);
+	font-weight: 700;
+	color: #ffe08a;
+	text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.world-poi-hint {
+	font-size: clamp(0.72rem, 1.5vw, 0.88rem);
+	color: rgba(255, 255, 255, 0.72);
+	line-height: 1.2;
+}
+
+/* Navbar play button */
+.nav-play-btn {
+	display: inline-flex !important;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.28rem 0.75rem 0.28rem 0.55rem !important;
+	border: 1px solid rgba(120, 220, 140, 0.55);
+	border-radius: 999px;
+	background: rgba(20, 60, 35, 0.55);
+	color: #b8f0c4 !important;
+	margin-inline: 0.15rem;
+}
+
+.nav-play-btn:hover,
+.nav-play-btn.active {
+	background: rgba(30, 90, 50, 0.85);
+	border-color: rgba(160, 255, 180, 0.75);
+	color: #e5ffe9 !important;
+}
+
+.nav-play-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.35rem;
+	height: 1.35rem;
+	border-radius: 50%;
+	background: rgba(120, 220, 140, 0.9);
+	color: #0a2012;
+	font-size: 0.72rem;
+	line-height: 1;
+	padding-left: 0.12rem;
+	box-shadow: 0 0 10px rgba(120, 220, 140, 0.35);
+}
+
+@media (max-width: 576px) {
+	.world-poi--smithy {
+		left: 24%;
+		top: 56%;
+	}
+
+	.world-poi--dungeon {
+		left: 74%;
+		top: 40%;
+	}
+
+	.world-poi-hint {
+		display: none;
+	}
+}

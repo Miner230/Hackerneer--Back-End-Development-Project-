@@ -106,6 +106,25 @@ function getCombinedFlatDamagePerRoll(stats) {
 	};
 }
 
+function formatEffectiveFlatDamageDisplay(stats) {
+	const combined = getCombinedFlatDamagePerRoll(stats);
+	const percent = Math.min(MAX_FLAT_DAMAGE_PERCENT, Number(stats?.flat_damage_percent || 0));
+
+	if (combined.max <= 0 && percent <= 0) {
+		return null;
+	}
+
+	const scale = (value) => Math.floor(Number(value || 0) * (1 + percent / 100));
+	const min = scale(combined.min);
+	const max = scale(combined.max);
+
+	if (max <= 0) {
+		return null;
+	}
+
+	return `${formatFlatDamageRange(min, max)} per roll`;
+}
+
 const IMPLICIT_STAT_DEFS = [
 	{
 		key: 'flat_damage',
@@ -528,6 +547,7 @@ module.exports = {
 	EDGE_FLAT_DAMAGE_RANGES,
 	getEdgeFlatDamageRange,
 	getCombinedFlatDamagePerRoll,
+	formatEffectiveFlatDamageDisplay,
 	formatFlatDamageRange,
 	formatEdgeModifierDisplay,
 	formatCraftedModifierDisplay,

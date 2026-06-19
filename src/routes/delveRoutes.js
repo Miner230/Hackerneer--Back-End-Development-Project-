@@ -34,6 +34,7 @@ router.get(
 //route to get delve instance data by id
 router.get('/:delveId', 
 	jwtController.verifyToken,
+	userController.readUserById,
 	delveController.readDelveInstanceById, 
 	responseController.sendData
 );

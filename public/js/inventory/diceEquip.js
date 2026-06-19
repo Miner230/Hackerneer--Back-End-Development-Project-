@@ -1,13 +1,30 @@
 const DICE_ASSET_BASE = '/assets/dice/';
 
 function getDiceImageSrc(item) {
-	if (item?.image_key) {
-		return `${DICE_ASSET_BASE}${item.image_key}.png`;
+	if (item?.ik || item?.image_key) {
+		return `${DICE_ASSET_BASE}${item.ik || item.image_key}.png`;
 	}
+	const lootId = item?.lid ?? item?.loot_id ?? item?.id;
 	if (typeof getLootImageSrc === 'function') {
-		return getLootImageSrc(item.loot_id || item.id);
+		return getLootImageSrc(lootId);
 	}
-	return `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${item.loot_id || item.id}.png`;
+	return `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${lootId}.png`;
+}
+
+function getEquippedDiceName(equippedDice) {
+	return equippedDice?.cn || equippedDice?.crafted_name || equippedDice?.n || equippedDice?.name;
+}
+
+function getEquippedDiceLevel(equippedDice) {
+	return Number(equippedDice?.il ?? equippedDice?.item_level) || 1;
+}
+
+function getEquippedDiceFlatDamage(equippedDice) {
+	return equippedDice?.flat || equippedDice?.flat_damage_display || '';
+}
+
+function getDiceInstanceId(item) {
+	return item?.id ?? item?.dice_instance_id;
 }
 
 function renderDiceCraftHeader(equippedDice) {
@@ -19,9 +36,13 @@ function renderDiceCraftHeader(equippedDice) {
 		return;
 	}
 
+	const flatDisplay = getEquippedDiceFlatDamage(equippedDice);
+	const flatHtml = flatDisplay ? `<div class="equipped-dice-flat">${flatDisplay}</div>` : '';
+
 	header.innerHTML = `
-		<div class="equipped-dice-name">${equippedDice.crafted_name || equippedDice.name}</div>
-		<div class="equipped-dice-level">Item Level ${equippedDice.item_level || 1}</div>
+		<div class="equipped-dice-name">${getEquippedDiceName(equippedDice)}</div>
+		<div class="equipped-dice-level">Item Level ${getEquippedDiceLevel(equippedDice)}</div>
+		${flatHtml}
 	`;
 }
 
@@ -50,19 +71,19 @@ function renderEquippedDiceCenter(equippedDice) {
 		return;
 	}
 
-	const rarity = (equippedDice.rarity || 'common').toLowerCase();
+	const rarity = (equippedDice.r ?? equippedDice.rarity ?? 'common').toLowerCase();
 	slot.classList.add(`rarity-${rarity}`);
 
 	const img = document.createElement('img');
 	img.src = getDiceImageSrc(equippedDice);
-	img.alt = equippedDice.name;
+	img.alt = getEquippedDiceName(equippedDice);
 	img.className = 'equipped-dice-image';
 	img.draggable = false;
 
 	slot.appendChild(img);
 
 	if (typeof bindDieDropTarget === 'function') {
-		bindDieDropTarget(slot, equippedDice.dice_instance_id);
+		bindDieDropTarget(slot, getDiceInstanceId(equippedDice));
 	}
 
 	unequipBtn.classList.remove('d-none');
@@ -78,9 +99,10 @@ function renderEquippedDicePanel(equippedDice) {
 }
 
 function openEquipOverlay(item) {
-	document.getElementById('equipDiceTitle').textContent = `Equip "${item.name}"?`;
+	const itemName = item.n || item.name;
+	document.getElementById('equipDiceTitle').textContent = `Equip "${itemName}"?`;
 	document.getElementById('equipDiceDesc').textContent =
-		item.stat_description || 'Equip this die for your next delve.';
+		item.d || item.stat_description || 'Equip this die for your next delve.';
 	document.getElementById('confirmEquipBtn').dataset.item = JSON.stringify(item);
 	document.getElementById('equipDiceOverlay').classList.remove('d-none');
 }
@@ -107,7 +129,13 @@ function confirmEquipDice() {
 		}
 	};
 
-	fetchMethod(`${currentUrl}/api/inventory/dice/${item.dice_instance_id}/equip`, callback, 'PUT', null, token);
+	fetchMethod(
+		`${currentUrl}/api/inventory/dice/${getDiceInstanceId(item)}/equip`,
+		callback,
+		'PUT',
+		null,
+		token
+	);
 }
 
 function unequipDice() {

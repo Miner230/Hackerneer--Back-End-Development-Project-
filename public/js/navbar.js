@@ -21,8 +21,12 @@ document.addEventListener('DOMContentLoaded', function () {
 			<div class="collapse navbar-collapse" id="navbarNav">
 				<ul class="navbar-nav me-auto">
 					<li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-					<li class="nav-item"><a class="nav-link" href="delve.html">Delve!</a></li>
-					<li class="nav-item"><a class="nav-link" href="bounty.html">Bug Bounties</a></li>
+					<li class="nav-item">
+						<a class="nav-link nav-play-btn" href="world.html" aria-label="Play">
+							<span class="nav-play-icon" aria-hidden="true">▶</span>
+							<span class="nav-play-label">Play</span>
+						</a>
+					</li>
 					<li class="nav-item"><a class="nav-link" href="logbook.html">Logbook</a></li>
 				</ul>
 
@@ -115,3 +119,5 @@ document.addEventListener('DOMContentLoaded', function () {
 		footerPlaceholder.innerHTML = footerHTML;
 	}
 });
+
+window.updateNavbarProfileLabel = updateNavbarProfileLabel;

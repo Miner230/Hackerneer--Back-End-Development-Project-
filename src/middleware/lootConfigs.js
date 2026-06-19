@@ -108,19 +108,14 @@ function rollMonsterDiceDrop(lootRows, itemRarity = 0) {
 }
 
 // Rolls multiple loot items based on weighted probabilities.
-// Validates user has enough loot shards and reputation before rolling.
+// Validates user has enough loot shards before rolling.
 // Groups duplicates in the claimed result.
  
 function bulkRollLoot(user_data, lootRows, amount) {
-	const roll_cost = 150; // Reputation cost per loot shard claimed
 	const claimedMap = {};
 
-	// Validation checks
 	if (user_data[0].loot_shard < amount) {
 		return { error: "You don't have enough loot shards!" };
-	}
-	if (user_data[0].reputation < roll_cost * amount) {
-		return { error: `You need ${roll_cost * amount} reputation to claim ${amount} loot shards.` };
 	}
 	if (!lootRows || lootRows.length === 0) {
 		return { error: 'No loot data available' };

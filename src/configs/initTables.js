@@ -21,35 +21,27 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
 		console.log('Hashed password:', hash);
 
 		const SQLSTATEMENT = `
-  DROP TABLE IF EXISTS user;
-
-  DROP TABLE IF EXISTS inventory;
-
-  DROP TABLE IF EXISTS loot;
-
-  DROP TABLE IF EXISTS vulnerability;
-
-  DROP TABLE IF EXISTS monsters;
-
-  DROP TABLE IF EXISTS monster_modifiers;
-
   DROP TABLE IF EXISTS delve_modifiers;
-
-  DROP TABLE IF EXISTS report;
-
-  DROP TABLE IF EXISTS review;
-
-  DROP TABLE IF EXISTS dice;
-
+  DROP TABLE IF EXISTS dice_modifiers;
+  DROP TABLE IF EXISTS dice_socketed_items;
+  DROP TABLE IF EXISTS dice_gear;
+  DROP TABLE IF EXISTS user_dice;
+  DROP TABLE IF EXISTS inventory;
   DROP TABLE IF EXISTS delve_instances;
+  DROP TABLE IF EXISTS dice;
+  DROP TABLE IF EXISTS report;
+  DROP TABLE IF EXISTS review;
+  DROP TABLE IF EXISTS vulnerability;
+  DROP TABLE IF EXISTS loot;
+  DROP TABLE IF EXISTS monster_modifiers;
+  DROP TABLE IF EXISTS monsters;
+  DROP TABLE IF EXISTS user;
 
   CREATE TABLE user (
       id INT AUTO_INCREMENT PRIMARY KEY,
       username TEXT NOT NULL,
       account_role ENUM('user', 'admin', 'god') NOT NULL DEFAULT 'user',
       password TEXT NOT NULL,
-      reputation BIGINT DEFAULT 0,
-      rep_multi DECIMAL(10,4) DEFAULT 1.0000,
       level INT DEFAULT 1,
       experience INT NOT NULL DEFAULT 0,
       level_up_cost BIGINT DEFAULT 100,
@@ -72,6 +64,7 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       socket_count INT NOT NULL DEFAULT 0,
       instance_rarity VARCHAR(32) NOT NULL DEFAULT 'Common',
       drop_rarity_score INT NOT NULL DEFAULT 100,
+      stats_snapshot JSON NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -81,13 +74,6 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
       loot_id INT NOT NULL,
       quantity INT NOT NULL,
       UNIQUE(user_id, loot_id)
-  );
-
-  CREATE TABLE vulnerability (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      type TEXT NOT NULL,
-      description TEXT NOT NULL,
-      points INT NOT NULL
   );
 
   CREATE TABLE monsters (
@@ -102,24 +88,6 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
     name TEXT NOT NULL,
     description TEXT NOT NULL,
     weight INT NOT NULL
-  );
-
-  CREATE TABLE report (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    closer_id INT NOT NULL DEFAULT 0,
-    vulnerability_id INT NOT NULL,
-    status BOOLEAN NOT NULL DEFAULT 0,
-    details TEXT NOT NULL,
-    solution TEXT NOT NULL
-  );
-
-  CREATE TABLE review (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    report_id INT NOT NULL,
-    rating INT NOT NULL,
-    response TEXT NOT NULL
   );
 
   CREATE TABLE dice (
@@ -231,80 +199,19 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
     weight INT NOT NULL
   );
 
-  INSERT INTO user (username, password, reputation, rep_multi, level, level_up_cost, voidstone_count, loot_shard, number_of_delve_completed)
+  INSERT INTO user (username, password, level, level_up_cost, voidstone_count, loot_shard, number_of_delve_completed)
   VALUES 
-  ("Admin", '${hash}', 500000, 1.03, 300, 300, 1, 10, 5),
-  ("KingCow", '${hash}', 500000000, 1.03, 1000, 300, 10, 1000000, 5),
-  ("Fabiheeheehaahaa", '${hash}', 50, 1.03, 3, 300, 10, 1000000, 5),
-  ("LackOfMoney", '${hash}', 0, 1.03, 5, 300, 10, 1000000, 5),
-  ("Deevashz2007", '${hash}', 5000, 1.03, 100, 300, 10, 1000000, 5),
-  ("CharlesBurger", '${hash}', 500, 1.03, 10, 300, 10, 1000000, 5);
+  ("Admin", '${hash}', 300, 300, 1, 10, 5),
+  ("KingCow", '${hash}', 1000, 300, 10, 1000000, 5),
+  ("Fabiheeheehaahaa", '${hash}', 3, 300, 10, 1000000, 5),
+  ("LackOfMoney", '${hash}', 5, 300, 10, 1000000, 5),
+  ("Deevashz2007", '${hash}', 100, 300, 10, 1000000, 5),
+  ("CharlesBurger", '${hash}', 10, 300, 10, 1000000, 5);
 
   INSERT INTO dice (user_id, side_1, side_2, side_3, side_4, side_5, side_6, no_of_rolls, duplication_chance, duplication_number, crit_chance, crit_power)
   VALUES 
   (1, 10, 10, 10, 10, 10, 10, 5, 100, 1, 100, 20000),
   (2, 10, 10, 10, 10, 10, 10, 13, 100, 7, 100, 2200);
-
-  INSERT INTO vulnerability (type, description, points)
-  VALUES 
-  ("XSS", "Allows attackers to inject malicious scripts into web pages.", 200),
-  ("SQL Injection", "Lets attackers manipulate databases via malicious SQL in input fields.", 200),
-  ("CSRF", "Tricks users into performing unintended actions while authenticated.", 200),
-  ("Open Redirect", "Lets users control redirect URLs, potentially enabling phishing or malware.", 200),
-  ("Command Injection Attack", "Executes system commands via insecurely handled user input.", 300),
-  ("Insecure Direct Object Reference", "Lets attackers access unauthorized resources by changing input values.", 150),
-  ("Local File Inclusion", "Includes server files via user input, revealing data or enabling code execution.", 250),
-  ("Remote File Inclusion", "Executes external code by manipulating file inclusion paths.", 300),
-  ("Broken Authentication Mechanism", "Weak auth logic allows session hijacking, token reuse, etc.", 200),
-  ("Sensitive Data Exposure", "Sensitive info like passwords or credit cards is exposed or weakly protected.", 150),
-  ("Clickjacking Vulnerability", "Tricks users into clicking hidden UI elements, triggering unintended actions.", 200),
-  ("Security Misconfiguration", "Defaults, open access, or exposed admin panels make apps easier to exploit.", 200),
-  ("Directory Path Traversal", "Accesses restricted files by manipulating path input (e.g., ../etc/passwd).", 250),
-  ("Weak Password Policy Enforcement", "Allows simple or guessable passwords, increasing brute-force risk.", 200),
-  ("Missing Login Rate Limiting", "No cap on login attempts enables brute-force password guessing.", 200),
-  ("Hardcoded Authentication Credentials", "Stored credentials in code can be extracted by attackers.", 150),
-  ("Unrestricted File Upload Flaw", "Uploads without validation can lead to server compromise.", 300),
-  ("Broken Access Control", "Grants users unintended access to resources or actions.", 250),
-  ("Improper Input Validation", "Unvalidated input may lead to injection, crashes, or data issues.", 100),
-  ("Exposed .git Directory", "Public .git folders let attackers download code and sensitive info.", 150),
-  ("Leaked API Key", "Public API keys allow attackers to abuse services or extract data.", 200);
-  
-  INSERT INTO report (user_id, closer_id, vulnerability_id, status, details, solution) VALUES
-  (1, 1, 1, 1, 'XSS vulnerability on product page review form.', 'Sanitize and encode output to prevent script execution.'),
-  (1, 1, 2, 1, 'SQL Injection in search box revealed database entries.', 'Use parameterized queries to prevent SQL injection.'),
-  (1, 1, 3, 0, 'CSRF found on account deletion form.', 'Implement CSRF tokens and verify origin headers.'),
-  (1, 1, 4, 1, 'Open Redirect in reset-password endpoint.', 'Validate and restrict redirect URLs to internal domains.'),
-  (1, 1, 5, 0, 'Command injection in user profile image upload tool.', 'Use allow-lists and proper input sanitization.'),
-  (1, 1, 6, 1, 'IDOR vulnerability lets attackers access invoices of others.', 'Apply proper access control checks per resource.'),
-  (1, 1, 7, 1, 'LFI lets users read /etc/passwd via crafted input.', 'Restrict file paths and sanitize user input.'),
-  (1, 1, 8, 0, 'RFI vulnerability detected in theme selection module.', 'Disable remote file fetching and validate include paths.'),
-  (1, 1, 9, 1, 'Broken authentication allowed reuse of expired session tokens.', 'Expire sessions on logout and use secure token generation.'),
-  (1, 1, 10, 0, 'Sensitive credit card info exposed in network traffic.', 'Use HTTPS and apply proper encryption.'),
-  (1, 1, 11, 1, 'Clickjacking vulnerability on dashboard page.', 'Add X-Frame-Options and CSP headers.'),
-  (1, 1, 12, 0, 'Admin panel publicly accessible with default credentials.', 'Restrict access and change default settings.'),
-  (1, 1, 13, 1, 'Path traversal exposes config files.', 'Normalize paths and restrict user-supplied file input.'),
-  (1, 1, 14, 0, 'No password policy enforced during registration.', 'Implement strong password complexity rules.'),
-  (1, 1, 15, 1, 'No rate limit on login attempts enables brute-force.', 'Apply rate limiting and CAPTCHA protection.'),
-  (1, 1, 16, 1, 'Source code contains hardcoded credentials.', 'Move secrets to secure vaults and environment variables.'),
-  (1, 1, 17, 0, 'File upload allows .php files without validation.', 'Restrict file types and validate MIME types.'),
-  (1, 1, 18, 1, 'Access control missing on /admin/settings endpoint.', 'Use role-based access control and authorization checks.'),
-  (1, 1, 19, 0, 'Improper input validation in signup form causes crashes.', 'Validate input format and sanitize values.'),
-  (1, 1, 20, 1, '.git directory exposed in web root.', 'Remove .git from production or deny access via .htaccess.'),
-  (1, 1, 21, 0, 'Public repo exposed API key used in production.', 'Revoke and rotate API key, move secrets to config store.');
-  
-  INSERT INTO review (user_id, report_id, rating, response) VALUES
-  (1, 1, 5, 'Very well documented. Clear description of the XSS impact and solution.'),
-  (2, 1, 5, 'Terrific!. Clear description of the XSS impact and solution.'),
-  (1, 2, 4, 'Good catch on the SQL injection. Consider adding test cases.'),
-  (1, 3, 3, 'CSRF write-up is decent but lacks mitigation examples.'),
-  (1, 4, 5, 'Excellent explanation and reasoning for open redirect fix.'),
-  (1, 5, 4, 'Command injection discovery is critical. More evidence would help.'),
-  (1, 6, 5, 'IDOR report is precise and shows good understanding of access control.'),
-  (1, 7, 4, 'LFI report is well written, though logs could have supported the claim.'),
-  (1, 8, 3, 'RFI description is fine, but mitigation advice is too generic.'),
-  (1, 9, 5, 'Solid breakdown of the session issue and proposed secure design.'),
-  (1, 10, 2, 'Sensitive data exposure issue needs more context and impact assessment.');
-
 
   INSERT INTO monsters (name, description, weight)
   VALUES
@@ -467,10 +374,10 @@ bcrypt.hash(passwordWithPepper, saltRounds, (error, hash) => {
   ("Perfect Essence of edge", "dice_flat_damage_roll", "Drag onto die - Prefix - rolls 130-150 Flat Damage per Roll (+130-150 per roll)", 50, "Legendary", "Every roll carries ruin.", 500, 1),
 
   -- Equippable dice (monster drops)
-  ("Basic Die", "equip_dice", "Equip for delves - balanced faces - item level on drop - 1-6 sockets", 0, "Common", "Every delver begins with a humble cube.", 0, 0),
-  ("Crimson Die", "equip_dice", "Equip - high crit implicit - roll-based flat damage per face - 1-6 sockets", 0, "Uncommon", "A blood-stained cube that hungers for critical strikes.", 0, 12),
-  ("Bone Die", "equip_dice", "Equip - 8 rolls per attack - item level on drop - 1-6 sockets", 0, "Uncommon", "Carved from a fallen delver's remains.", 0, 12),
-  ("Copper Die", "equip_dice", "Equip - duplication focus - item level on drop - 1-6 sockets", 0, "Uncommon", "Warm metal that echoes every lucky roll.", 0, 12);
+  ("Basic Die", "equip_dice", "Equip for delves - balanced faces - item level on drop - 0-6 sockets", 0, "Common", "Every delver begins with a humble cube.", 0, 0),
+  ("Crimson Die", "equip_dice", "Equip - high crit implicit - roll-based flat damage per face - 0-6 sockets", 0, "Uncommon", "A blood-stained cube that hungers for critical strikes.", 0, 12),
+  ("Bone Die", "equip_dice", "Equip - 8 rolls per attack - item level on drop - 0-6 sockets", 0, "Uncommon", "Carved from a fallen delver's remains.", 0, 12),
+  ("Copper Die", "equip_dice", "Equip - duplication focus - item level on drop - 0-6 sockets", 0, "Uncommon", "Warm metal that echoes every lucky roll.", 0, 12);
 
   INSERT INTO dice_gear
     (loot_id, image_key, side_1, side_2, side_3, side_4, side_5, side_6, no_of_rolls, duplication_chance, duplication_number, crit_chance, crit_power, flat_damage)

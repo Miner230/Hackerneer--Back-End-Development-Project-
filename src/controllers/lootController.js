@@ -1,5 +1,6 @@
 const model = require('../models/lootModel.js');
 const userDiceModel = require('../models/userDiceModel.js');
+const diceCraftService = require('../services/diceCraftService.js');
 const diceGearModel = require('../models/diceGearModel.js');
 const mechanicMap = require('../utils/mechanicMap.js');
 const { rollDiceItemLevel } = require('../utils/diceItemLevel.js');
@@ -151,17 +152,24 @@ module.exports.grantMonsterDrops = (req, res, next) => {
 				},
 				(error, result) => {
 					if (error) return callback(error);
-					userDiceModel.selectById(
-						{ userId, diceInstanceId: result.insertId },
-						(selectError, diceRows) => {
-							if (selectError) return callback(selectError);
-							const diceRow = diceRows[0];
-							callback(null, {
-								...item,
-								dice_instance_id: result.insertId,
-								item_level: itemLevel,
-								socket_count: Number(diceRow?.socket_count) || 0,
-							});
+					diceCraftService.rebuildAndPersistDiceSnapshot(
+						userId,
+						result.insertId,
+						(rebuildError) => {
+							if (rebuildError) return callback(rebuildError);
+							userDiceModel.selectById(
+								{ userId, diceInstanceId: result.insertId },
+								(selectError, diceRows) => {
+									if (selectError) return callback(selectError);
+									const diceRow = diceRows[0];
+									callback(null, {
+										...item,
+										dice_instance_id: result.insertId,
+										item_level: itemLevel,
+										socket_count: Number(diceRow?.socket_count) || 0,
+									});
+								}
+							);
 						}
 					);
 				}

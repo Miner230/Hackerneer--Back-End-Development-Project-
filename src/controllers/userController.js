@@ -173,57 +173,13 @@ module.exports.grantKillExperience = (req, res, next) => {
 	);
 };
 
-// Update user by ID
-module.exports.updateUserById = (req, res, next) => {
-	if (req.body.username === undefined || req.body.reputation === undefined) {
-		return res.status(400).json({ message: 'Error: username or reputation is undefined' });
-	}
-
-	const data = {
-		id: req.params.userId,
-		username: req.body.username,
-		reputation: req.body.reputation,
-	};
-
-	const callback = (error, results) => {
-		if (error) {
-			console.error('Error updateUserById:', error);
-			res.status(500).json(error);
-		} else if (results.affectedRows === 0) {
-			res.status(404).json({ message: 'Failed to update user' });
-		} else {
-			res.status(200).json(data);
-		}
-	};
-	model.updateUserById(data, callback);
-};
-
-// Update user reputation after a vulnerability report
-module.exports.updateUserRep = (req, res, next) => {
-	data = {
-		userId: res.locals.userId,
-		vulId: req.body.vulnerability_id || res.locals.vulId,
-		multi: res.locals.user_data[0].rep_multi,
-	};
-
-	const callback = (error) => {
-		if (error) {
-			console.error('Error updateUserRep:', error);
-			res.status(500).json(error);
-		} else {
-			next();
-		}
-	};
-	model.updateUserRep(data, callback);
-};
-
 // Update user stats after a completed delve
 module.exports.updateUserByDelve = (req, res, next) => {
 	if (res.locals.instance_Data[0].health > 0) {
-		return next(); // Only update stats if monster is defeated
+		return next();
 	}
 
-	data = {
+	const data = {
 		userId: res.locals.userId,
 	};
 
@@ -248,9 +204,6 @@ module.exports.removeLootShard = (req, res, next) => {
 	if (user.loot_shard < amount) {
 		return res.status(409).json({ message: 'Not enough loot shards' });
 	}
-	if (user.reputation < 150 * amount) {
-		return res.status(409).json({ message: `Not enough reputation to claim ${amount} loot shard(s)` });
-	}
 
 	const data = { userId: res.locals.userId, amount };
 
@@ -265,33 +218,6 @@ module.exports.removeLootShard = (req, res, next) => {
 		next();
 	};
 	model.decrementLootShard(data, callback);
-};
-
-// Remove reputation when claiming loot
-module.exports.removeReputation = (req, res, next) => {
-	const amount = parseInt(req.params.amount) || 1;
-	const costPerLoot = 150;
-	const totalCost = Number(res.locals.craft_cost) || costPerLoot * amount;
-
-	res.locals.craft_cost = totalCost;
-
-	const data = { userId: res.locals.userId, usedRep: totalCost };
-
-	const callback = (error, results) => {
-		if (error) {
-			console.error('Error removeReputation:', error);
-			return res.status(500).json(error);
-		}
-		if (results.affectedRows === 0) {
-			return res.status(404).json({ message: 'Not enough reputation to claim loot' });
-		}
-		const user = res.locals.user_data?.[0];
-		if (user) {
-			user.reputation = Math.max(0, Number(user.reputation || 0) - totalCost);
-		}
-		next();
-	};
-	model.removeRep(data, callback);
 };
 
 // Get leaderboard data

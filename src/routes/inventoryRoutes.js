@@ -8,7 +8,6 @@ const lootController = require('../controllers/lootController');
 const { verifyToken } = require('../controllers/jwtController');
 const responseController = require('../controllers/responseController');
 
-// Route to get the inventory for a specific user by userId
 router.get(
 	'/',
 	verifyToken,
@@ -34,7 +33,6 @@ router.put(
 	verifyToken,
 	userController.readUserCraftContext,
 	diceCraftController.craftEssenceOntoDice,
-	userController.removeReputation,
 	diceCraftController.finalizeCraft,
 	responseController.sendData
 );
@@ -44,7 +42,6 @@ router.put(
 	verifyToken,
 	userController.readUserCraftContext,
 	diceSocketController.socketItemOntoDice,
-	userController.removeReputation,
 	diceSocketController.finalizeSocket,
 	responseController.sendData
 );
@@ -67,18 +64,15 @@ router.put(
 	responseController.sendData
 );
 
-// Route to use an item from the inventory for a specific user
 router.put(
 	'/:lootId/',
 	verifyToken,
 	userController.readUserById,
-	inventoryController.useItemInInventory, 
-	lootController.handleMechanics, 
-	userController.removeReputation, 
-	lootController.removeQnt, 
+	inventoryController.useItemInInventory,
+	lootController.handleMechanics,
+	lootController.removeQnt,
 	inventoryController.getInventoryById,
 	responseController.sendData
 );
 
-// Export the router to be used in the main application
 module.exports = router;

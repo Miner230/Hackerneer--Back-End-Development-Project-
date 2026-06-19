@@ -8,8 +8,6 @@ const PASSWORD = 'god';
 const SALT_ROUNDS = 10;
 
 const GOD_USER = {
-	reputation: 500_000_000,
-	rep_multi: 1.5,
 	level: 100,
 	level_up_cost: 300,
 	voidstone_count: 100,
@@ -84,8 +82,6 @@ function upsertUser(passwordHash, callback) {
 
 		const userValues = [
 			passwordHash,
-			GOD_USER.reputation,
-			GOD_USER.rep_multi,
 			GOD_USER.level,
 			GOD_USER.level_up_cost,
 			GOD_USER.voidstone_count,
@@ -97,7 +93,7 @@ function upsertUser(passwordHash, callback) {
 			const userId = rows[0].id;
 			pool.query(
 				`UPDATE user
-         SET password = ?, reputation = ?, rep_multi = ?, level = ?, level_up_cost = ?,
+         SET password = ?, level = ?, level_up_cost = ?,
              voidstone_count = ?, loot_shard = ?, number_of_delve_completed = ?, account_role = 'god'
          WHERE id = ?`,
 				[...userValues, userId],
@@ -111,8 +107,8 @@ function upsertUser(passwordHash, callback) {
 
 		pool.query(
 			`INSERT INTO user
-       (username, account_role, password, reputation, rep_multi, level, level_up_cost, voidstone_count, loot_shard, number_of_delve_completed)
-       VALUES (?, 'god', ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (username, account_role, password, level, level_up_cost, voidstone_count, loot_shard, number_of_delve_completed)
+       VALUES (?, 'god', ?, ?, ?, ?, ?, ?)`,
 			[USERNAME, ...userValues],
 			(insertError, results) => {
 				if (insertError) return callback(insertError);
@@ -143,7 +139,6 @@ function run() {
 			console.log(`  id: ${userId}`);
 			console.log(`  level: ${GOD_USER.level}`);
 			console.log(`  voidstone_count: ${GOD_USER.voidstone_count}`);
-			console.log(`  reputation: ${GOD_USER.reputation}`);
 			console.log(`  loot_shard: ${GOD_USER.loot_shard}`);
 			console.log('');
 			console.log('Dice stats:');

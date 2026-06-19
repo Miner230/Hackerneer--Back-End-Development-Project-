@@ -9,6 +9,10 @@ const {
 	formatModifierRow,
 	isEssenceAffixModifier,
 } = require('../utils/diceEssenceCraft.js');
+const {
+	buildDiceItemSnapshot,
+	snapshotTotalsForDiceTable,
+} = require('../utils/diceItemSnapshot.js');
 const { formatSocketRow } = require('../utils/diceSockets.js');
 
 function parseOptionalUserData(userDataOrCallback, maybeCallback) {
@@ -90,6 +94,28 @@ function loadModifiersAndSockets(userId, diceInstanceId, callback) {
 	});
 }
 
+function rebuildAndPersistDiceSnapshot(userId, diceInstanceId, callback) {
+	userDiceModel.selectById({ userId, diceInstanceId }, (diceError, diceRows) => {
+		if (diceError) return callback(diceError);
+
+		const dieRow = diceRows[0];
+		if (!dieRow?.loot_id) return callback(null, null);
+
+		loadModifiersAndSockets(userId, diceInstanceId, (loadError, { modifiers, sockets }) => {
+			if (loadError) return callback(loadError);
+
+			const snapshot = buildDiceItemSnapshot(dieRow, modifiers, sockets);
+			userDiceModel.updateStatsSnapshot(
+				{ userId, diceInstanceId, snapshot },
+				(updateError) => {
+					if (updateError) return callback(updateError);
+					callback(null, snapshot);
+				}
+			);
+		});
+	});
+}
+
 function syncDiceInstanceStatsFromData(userId, dieRow, modifiers, callbackOrSockets, maybeCallback) {
 	let knownSockets = null;
 	let callback = callbackOrSockets;
@@ -131,8 +157,23 @@ function syncDiceInstanceStats(userId, diceInstanceId, callback) {
 		loadModifiersAndSockets(userId, diceInstanceId, (loadError, { modifiers, sockets }) => {
 			if (loadError) return callback(loadError);
 
-			const effectiveStats = computeEffectiveDiceStats(dieRow, modifiers, sockets);
-			diceModel.applyGearStats({ ...effectiveStats, userId }, callback);
+		const effectiveStats = computeEffectiveDiceStats(dieRow, modifiers, sockets);
+		diceModel.applyGearStats({ ...effectiveStats, userId }, callback);
+		});
+	});
+}
+
+function persistDiceSnapshotAndSync(userId, diceInstanceId, userData, callback) {
+	rebuildAndPersistDiceSnapshot(userId, diceInstanceId, (snapshotError, snapshot) => {
+		if (snapshotError) return callback(snapshotError);
+
+		resolveEquippedDiceId(userId, userData, (equippedError, equippedDiceId) => {
+			if (equippedError) return callback(equippedError);
+			if (equippedDiceId !== diceInstanceId) return callback(null, snapshot);
+
+			const totals = snapshotTotalsForDiceTable(snapshot);
+			if (!totals) return callback(null, snapshot);
+			diceModel.applyGearStats({ ...totals, userId }, (syncError) => callback(syncError, snapshot));
 		});
 	});
 }
@@ -192,6 +233,8 @@ module.exports = {
 	loadModifiers,
 	loadSockets,
 	loadModifiersAndSockets,
+	rebuildAndPersistDiceSnapshot,
+	persistDiceSnapshotAndSync,
 	syncDiceInstanceStatsFromData,
 	syncDiceInstanceStats,
 	syncEquippedDiceStats,

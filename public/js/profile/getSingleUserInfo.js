@@ -62,8 +62,6 @@ function loadUserInfo(data) {
 		<li class="list-group-item d-flex justify-content-between text-info">Total Health ♥<span>${formatProfileStat(totalHealth)}</span></li>
 		<li class="list-group-item d-flex justify-content-between text-info">Health Regen ✚<span>${formatProfileStat(lifeRegen)} / turn</span></li>
 		<li class="list-group-item d-flex justify-content-between text-primary">Speed ⚡<span>${formatProfileStat(playerSpeed)} / turn</span></li>
-		<li class="list-group-item d-flex justify-content-between text-warning">Reputation<span>${user.reputation}</span></li>
-		<li class="list-group-item d-flex justify-content-between text-danger">Rep Multiplier<span>${user.rep_multi}X</span></li>
 		<li class="list-group-item d-flex justify-content-between rainbow-text">Loot Shards<span>${user.loot_shard}</span></li>
 		</ul>
       </div>

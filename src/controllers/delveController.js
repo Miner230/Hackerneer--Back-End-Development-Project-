@@ -53,6 +53,7 @@ module.exports.readDelveInstanceById = (req, res, next) => {
 		} else {
 			const formatted = formatDelveResults(results);
 			formatted.health = Math.max(0, formatted.health);
+			const playerLevel = Math.max(1, Number(res.locals.user_data?.[0]?.level) || 1);
 
 			res.locals.instance_Data = results;
 			res.locals.createdInstance = {
@@ -82,6 +83,7 @@ module.exports.readDelveInstanceById = (req, res, next) => {
 				active_turn: formatted.active_turn,
 				attacks_remaining: formatted.attacks_remaining,
 				status: formatted.status,
+				player_level: playerLevel,
 			};
 			next();
 		}
@@ -176,6 +178,7 @@ module.exports.displayNewDelve = (req, res, next) => {
 		const modifiers = results
 			.filter((r) => r.modifier_id !== null)
 			.map((r) => ({ id: r.modifier_id, name: r.modifier_name, description: r.modifier_description }));
+		const playerLevel = Math.max(1, Number(res.locals.user_data?.[0]?.level) || 1);
 
 		res.locals.createdInstance = {
 			id: first.delve_id,
@@ -199,6 +202,7 @@ module.exports.displayNewDelve = (req, res, next) => {
 			active_turn: first.active_turn,
 			attacks_remaining: first.attacks_remaining,
 			status: first.status,
+			player_level: playerLevel,
 		};
 		next();
 	};
@@ -305,6 +309,11 @@ module.exports.displayCurrentDelveInstance = (req, res, next) => {
 			combatSummary: res.locals.combatResult || null,
 		});
 
+		const playerLevel = Math.max(1, Number(res.locals.user_data?.[0]?.level) || 1);
+		if (res.locals.currentInstance?.stats) {
+			res.locals.currentInstance.stats.player_level = playerLevel;
+		}
+
 		if (res.locals.droppedLoot?.length) {
 			res.locals.currentInstance.rewards = {
 				type: 'loot_drop',
@@ -313,9 +322,12 @@ module.exports.displayCurrentDelveInstance = (req, res, next) => {
 		}
 
 		if (res.locals.xpReward) {
+			const previousLevel = playerLevel - (res.locals.levelsGained || 0);
 			res.locals.currentInstance.xp = {
 				gained: res.locals.xpReward,
 				levelsGained: res.locals.levelsGained || 0,
+				level: playerLevel,
+				previousLevel,
 				progress: res.locals.xpProgress || null,
 			};
 		}

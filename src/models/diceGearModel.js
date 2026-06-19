@@ -18,6 +18,7 @@ module.exports.selectEquippedForUser = (data, callback) => {
             user_dice.item_level,
             user_dice.socket_count,
             user_dice.drop_rarity_score,
+            user_dice.stats_snapshot,
             loot.name,
             loot.rarity,
             loot.stat_description,

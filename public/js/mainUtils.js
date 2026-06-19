@@ -236,9 +236,9 @@ function showConfettiOverlay(message = 'Action Complete!') {
 	text.textContent = message;
 
 	// Trigger pop animation on text
-	text.classList.remove('animate-pop');
+	text.classList.remove('animate-pop', 'level-up-text');
 	void text.offsetWidth; // Force reflow to restart animation
-	text.classList.add('animate-pop');
+	text.classList.add('level-up-text');
 
 	// Show overlay
 	overlay.classList.remove('d-none');

@@ -49,7 +49,7 @@ module.exports.selectUserById = (data, callback) => {
 // Gets lightweight user fields used by crafting/socket routes.
 module.exports.selectCraftContext = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT id, account_role, reputation, equipped_dice_id
+        SELECT id, account_role, equipped_dice_id
         FROM user
         WHERE id = ?;
     `;
@@ -59,7 +59,7 @@ module.exports.selectCraftContext = (data, callback) => {
 // Gets information from the database about the user without providing sensitive values
 module.exports.selectUserByIdSecure = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT id, username, account_role, level, experience, level_up_cost, loot_shard, number_of_delve_completed, reputation, rep_multi, voidstone_count,
+        SELECT id, username, account_role, level, experience, level_up_cost, loot_shard, number_of_delve_completed, voidstone_count,
                player_flat_health, player_max_health_percent, damage_reduction_penetration, player_life_regen, player_speed_bonus,
                equipped_dice_id
         FROM user
@@ -77,30 +77,6 @@ module.exports.selectByUsername = (data, callback) => {
     `;
 
 	const VALUES = [data.username];
-	pool.query(SQLSTATMENT, VALUES, callback);
-};
-
-// Update username and reputation for a user
-module.exports.updateUserById = (data, callback) => {
-	const SQLSTATMENT = `
-        UPDATE user 
-        SET username = ?, reputation = ?
-        WHERE id = ?;
-    `;
-	const VALUES = [data.username, data.reputation, data.id];
-	pool.query(SQLSTATMENT, VALUES, callback);
-};
-
-// Add reputation based on vulnerability points
-module.exports.updateUserRep = (data, callback) => {
-	const SQLSTATMENT = `
-        UPDATE user
-        SET reputation = reputation + (
-            SELECT points FROM vulnerability WHERE id = ?
-        )*?
-        WHERE id = ?;
-    `;
-	const VALUES = [data.vulId, data.multi, data.userId];
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
@@ -126,23 +102,11 @@ module.exports.decrementLootShard = (data, callback) => {
 	pool.query(SQLSTATMENT, VALUES, callback);
 };
 
-// Deduct reputation from user
-module.exports.removeRep = (data, callback) => {
-	const SQLSTATMENT = `
-		UPDATE user
-		SET reputation = reputation - ?
-		WHERE id = ?
-	`;
-	const VALUES = [data.usedRep, data.userId, data.usedRep];
-	pool.query(SQLSTATMENT, VALUES, callback);
-};
-
-// Deduct reputation from user
 module.exports.selectLeaderboard = (callback) => {
 	const SQLSTATMENT = `
-    SELECT username, level, reputation 
+    SELECT username, level, number_of_delve_completed
     FROM user 
-    ORDER BY level DESC
+    ORDER BY level DESC, number_of_delve_completed DESC
     LIMIT 10;
     `;
 	pool.query(SQLSTATMENT, callback);

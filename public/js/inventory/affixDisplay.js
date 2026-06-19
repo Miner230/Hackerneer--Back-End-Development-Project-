@@ -51,12 +51,16 @@ const SOCKETABLE_MECHANICS = new Set([
 	'face_6',
 ]);
 
+function getItemMechanic(item) {
+	return item?.m ?? item?.mechanic;
+}
+
 function isCraftableItem(item) {
-	return CRAFTABLE_MECHANICS.has(item?.mechanic);
+	return CRAFTABLE_MECHANICS.has(getItemMechanic(item));
 }
 
 function isSocketableItem(item) {
-	return SOCKETABLE_MECHANICS.has(item?.mechanic);
+	return SOCKETABLE_MECHANICS.has(getItemMechanic(item));
 }
 
 function getEffectiveCraftStatline(item) {
@@ -173,7 +177,26 @@ function formatAffixBadge(affixType) {
 	return '';
 }
 
+function formatTuplePanelListItem([label, value], extraClass = '') {
+	return `<li class="affix-row ${extraClass}">
+		<div class="affix-row-main">
+			<span class="affix-stat">${label}</span>
+			<span class="affix-value">${value}</span>
+		</div>
+	</li>`;
+}
+
+function renderTuplePanelListHtml(rows = [], emptyText = 'None') {
+	if (!rows?.length) {
+		return `<li class="affix-empty">${emptyText}</li>`;
+	}
+	return rows.map((row) => formatTuplePanelListItem(row)).join('');
+}
+
 function formatImplicitListItem(implicit) {
+	if (Array.isArray(implicit)) {
+		return formatTuplePanelListItem(implicit, 'affix-row--implicit');
+	}
 	return `<li class="affix-row affix-row--implicit">
 		<div class="affix-row-main">
 			<span class="affix-stat">${implicit.label}</span>
@@ -281,6 +304,114 @@ function renderSocketListHtml(sockets = [], socketCount = 0, emptyText = 'No soc
 	return `${filled}${openHtml}`;
 }
 
+function renderTupleRowsHtml(rows = [], emptyText = 'None') {
+	if (!rows?.length) {
+		return `<li class="tooltip-affix-compact tooltip-affix-compact--empty">${emptyText}</li>`;
+	}
+	return rows
+		.map(
+			([label, value]) =>
+				`<li class="tooltip-affix-compact"><span class="tooltip-affix-name">${label}</span><span class="tooltip-affix-value">${value}</span></li>`
+		)
+		.join('');
+}
+
+function renderTupleAffixPanelHtml(label, rows) {
+	if (!rows?.length) return '';
+	return `<div class="tooltip-section-label">${label}</div><ul class="tooltip-affix-list">${renderTupleRowsHtml(rows)}</ul>`;
+}
+
+function getItemTypeLabel(item) {
+	if (item?.m === 'equip_dice' || item?.mechanic === 'equip_dice') {
+		return 'Dice';
+	}
+	if (isCraftableItem(item)) {
+		const affixType = getAffixTypeForMechanic(item.m || item.mechanic);
+		return affixType === 'prefix' ? 'Prefix Essence' : 'Suffix Essence';
+	}
+	if (isSocketableItem(item)) {
+		return 'Weighting Stone';
+	}
+	return 'Item';
+}
+
+function buildDiceTooltipHtml(item) {
+	const title = item.cn || item.crafted_name || item.n || item.name;
+	const socketCount = Math.max(0, Number(item.sc ?? item.socket_count) || 0);
+	const socketLine = `${socketCount} Socket${socketCount === 1 ? '' : 's'}`;
+	const skv = item.skv || [];
+	const imp = (item.imp || item.implicits || []).map((row) =>
+		Array.isArray(row) ? row : [row.label, row.display]
+	);
+	const pre = item.pre || [];
+	const suf = item.suf || [];
+	const flat = item.flat || item.flat_damage_display;
+
+	const skvHtml = skv.length
+		? `<ul class="tooltip-affix-list tooltip-socket-list">${renderTupleRowsHtml(skv)}</ul>`
+		: '';
+	const flatHtml = flat ? `<div class="tooltip-stat tooltip-stat--flat">${flat}</div>` : '';
+	const impHtml = imp.length
+		? `<ul class="tooltip-affix-list tooltip-implicit-list">${renderTupleRowsHtml(imp)}</ul>`
+		: '';
+
+	const affixBlock = `${renderTupleAffixPanelHtml('Prefixes', pre)}${renderTupleAffixPanelHtml('Suffixes', suf)}`;
+	const divider = affixBlock ? '<div class="tooltip-divider" role="presentation"></div>' : '';
+	const loreHtml = item.lore ? `<div class="tooltip-lore">${item.lore}</div>` : '';
+	const rarity = item.r ?? item.rarity ?? 'Common';
+
+	return `
+		<div class="tooltip-title">${title}</div>
+		<div class="tooltip-stat">${socketLine}</div>
+		${skvHtml}
+		${flatHtml}
+		${impHtml}
+		${divider}
+		${affixBlock}
+		<div class="tooltip-meta">${rarity} · Dice</div>
+		${loreHtml}
+	`;
+}
+
+function buildGenericTooltipHtml(item) {
+	const affixType = isCraftableItem(item) ? getAffixTypeForMechanic(item.m || item.mechanic) : null;
+	const statLine = item.d || item.stat_description || '';
+	const loreHtml = item.lore ? `<div class="tooltip-lore">${item.lore}</div>` : '';
+	const rarity = item.r ?? item.rarity ?? 'Common';
+
+	return `
+		${affixType ? formatAffixBadge(affixType) : ''}
+		<div class="tooltip-title">${item.n || item.name}</div>
+		${statLine ? `<div class="tooltip-stat">${statLine}</div>` : ''}
+		<div class="tooltip-meta">${rarity} · ${getItemTypeLabel(item)}</div>
+		${loreHtml}
+	`;
+}
+
+function buildInventoryTooltipHtml(item) {
+	if (item?.m === 'equip_dice' || item?.mechanic === 'equip_dice') {
+		return buildDiceTooltipHtml(item);
+	}
+	return buildGenericTooltipHtml(item);
+}
+
+function renderTupleAffixListHtml(rows = [], emptyText = 'None') {
+	return renderTupleRowsHtml(rows, emptyText);
+}
+
+function expandSocketTuple(tuple) {
+	if (!Array.isArray(tuple)) return tuple;
+	const [slot_index, source_loot_id, source_name, source_rarity, rolled_value, mechanic] = tuple;
+	return {
+		slot_index,
+		source_loot_id,
+		source_name,
+		source_rarity,
+		rolled_value,
+		mechanic,
+	};
+}
+
 function buildSocketedItemTooltip(socket) {
 	const tip = document.createElement('div');
 	const rarity = `rarity-${(socket.source_rarity || 'common').toLowerCase()}`;
@@ -288,15 +419,12 @@ function buildSocketedItemTooltip(socket) {
 
 	const name = socket.source_name || 'Weighting Stone';
 	const statLabel = getAffixStatLabel(socket.mechanic);
-	const statLine = socket.source_stat_description || '';
 	const value = Number(socket.rolled_value ?? socket.source_statline ?? 0);
 
 	tip.innerHTML = `
 		<div class="tooltip-title">${name}</div>
-		<div class="tooltip-stat">${statLabel}</div>
-		${statLine ? `<div class="tooltip-stat">${statLine}</div>` : ''}
-		<div class="tooltip-stat tooltip-fixed-value">+${value}</div>
-		<div class="tooltip-rarity">${socket.source_rarity || ''}</div>
+		<div class="tooltip-stat">${statLabel} · +${value}</div>
+		<div class="tooltip-meta">${socket.source_rarity || 'Common'} · Weighting Stone</div>
 	`;
 
 	return tip;
@@ -317,6 +445,7 @@ function appendAffixBadgeToSlot(slot, mechanic) {
 window.getModifierRollRange = getModifierRollRange;
 window.formatRollRangeText = formatRollRangeText;
 window.formatFixedValueText = formatFixedValueText;
+window.buildInventoryTooltipHtml = buildInventoryTooltipHtml;
 window.buildSocketedItemTooltip = buildSocketedItemTooltip;
 window.isCraftableItem = isCraftableItem;
 window.isSocketableItem = isSocketableItem;
@@ -331,5 +460,8 @@ window.renderEffectiveStatListHtml = renderEffectiveStatListHtml;
 window.formatAffixListItem = formatAffixListItem;
 window.renderAffixListHtml = renderAffixListHtml;
 window.renderTooltipAffixListHtml = renderTooltipAffixListHtml;
+window.renderTupleAffixListHtml = renderTupleAffixListHtml;
+window.expandSocketTuple = expandSocketTuple;
+window.renderTuplePanelListHtml = renderTuplePanelListHtml;
 window.renderSocketListHtml = renderSocketListHtml;
 window.appendAffixBadgeToSlot = appendAffixBadgeToSlot;

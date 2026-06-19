@@ -45,7 +45,6 @@ function insertSocketAndConsume(res, next, payload) {
 					source_name: item.name,
 				});
 
-				res.locals.craft_cost = item.craft_cost;
 				res.locals.itemName = item.name;
 				res.locals.targetDiceInstanceId = diceInstanceId;
 				res.locals.craftDieRow = payload.die;
@@ -109,9 +108,6 @@ module.exports.socketItemOntoDice = (req, res, next) => {
 		if (!isSocketableMechanic(item.mechanic)) {
 			return res.status(400).json({ message: 'This item cannot be socketed into dice.' });
 		}
-		if (item.craft_cost > res.locals.user_data[0].reputation) {
-			return res.status(403).json({ message: 'Not enough reputation to socket this stone.' });
-		}
 
 		const usedSockets = Number(die.used_socket_count) || 0;
 		if (usedSockets >= socketCount) {
@@ -151,34 +147,7 @@ module.exports.socketItemOntoDice = (req, res, next) => {
 };
 
 module.exports.finalizeSocket = (req, res, next) => {
-	const userId = res.locals.userId;
-	const dieRow = res.locals.craftDieRow;
-	const modifiers = res.locals.updatedModifiers || [];
-	const sockets = res.locals.updatedSockets || [];
-	const diceInstanceId = res.locals.targetDiceInstanceId;
-	const equippedId = res.locals.user_data?.[0]?.equipped_dice_id;
-
-	const complete = () => {
-		const socketed = res.locals.socketedItem;
-		res.locals.message = `Socketed ${socketed.source_name} (+${socketed.rolled_value}) into your die.`;
-		applyDiceMutationInventory(req, res, next);
-	};
-
-	if (equippedId === diceInstanceId) {
-		return diceCraftService.syncDiceInstanceStatsFromData(
-			userId,
-			dieRow,
-			modifiers,
-			sockets,
-			(syncError) => {
-				if (syncError) {
-					console.error('Error syncing socketed die stats:', syncError);
-					return res.status(500).json(syncError);
-				}
-				complete();
-			}
-		);
-	}
-
-	complete();
+	const socketed = res.locals.socketedItem;
+	res.locals.message = `Socketed ${socketed.source_name} (+${socketed.rolled_value}) into your die.`;
+	applyDiceMutationInventory(req, res, next);
 };

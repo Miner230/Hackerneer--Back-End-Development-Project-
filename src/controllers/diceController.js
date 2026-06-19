@@ -48,6 +48,7 @@ module.exports.grantStarterDice = (req, res, next) => {
 				lootId,
 				itemLevel: 1,
 				dropRarityScore: 8,
+				socketCount: 1,
 			},
 			(diceError, diceResult) => {
 			if (diceError) {
@@ -74,14 +75,19 @@ module.exports.grantStarterDice = (req, res, next) => {
 						return res.status(500).json(equipError);
 					}
 
-					diceCraftService.syncEquippedDiceStats(userId, (syncError) => {
-						if (syncError) {
-							console.error('Error syncing starter dice stats:', syncError);
-							return res.status(500).json(syncError);
-						}
+					diceCraftService.persistDiceSnapshotAndSync(
+						userId,
+						diceInstanceId,
+						null,
+						(syncError) => {
+							if (syncError) {
+								console.error('Error syncing starter dice stats:', syncError);
+								return res.status(500).json(syncError);
+							}
 
-						next();
-					});
+							next();
+						}
+					);
 				});
 			});
 		});

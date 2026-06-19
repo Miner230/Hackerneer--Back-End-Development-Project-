@@ -294,7 +294,11 @@ function logTurnSummary(data) {
 	if (xp?.gained) {
 		let xpMsg = `+${xp.gained} XP`;
 		if (xp.levelsGained > 0) {
-			xpMsg += ` — Level up${xp.levelsGained > 1 ? ` ×${xp.levelsGained}` : ''}!`;
+			const newLevel = xp.level ?? (typeof getDelvePlayerLevel === 'function' ? getDelvePlayerLevel() : '?');
+			xpMsg += ` — Level up${xp.levelsGained > 1 ? ` ×${xp.levelsGained}` : ''}! (Lv. ${newLevel})`;
+		}
+		if (typeof applyDelveXpGain === 'function') {
+			applyDelveXpGain(xp);
 		}
 		appendCombatLog(xpMsg, 'success');
 	}
@@ -734,6 +738,9 @@ function handleDelveActionResponse(status, data) {
 			}
 
 			if (stats) {
+				if (stats.player_level != null && typeof syncDelvePlayerLevel === 'function') {
+					syncDelvePlayerLevel(stats.player_level);
+				}
 				updatePlayerUI(stats);
 				if (typeof syncMonsterStatsFromDelve === 'function') {
 					syncMonsterStatsFromDelve(stats);

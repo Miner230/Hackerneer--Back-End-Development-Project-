@@ -55,7 +55,7 @@ function createLeaderboardItem(data) {
 			<div class="leaderboard-item">
 				#${index + 1} ${user.username}<br>
 				Level: ${user.level}<br>
-				Reputation: ${user.reputation}
+				Delves: ${user.number_of_delve_completed}
 			</div>
 		`;
 	});

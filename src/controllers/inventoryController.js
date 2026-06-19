@@ -5,166 +5,24 @@ const diceGearModel = require('../models/diceGearModel.js');
 const diceModel = require('../models/diceModel.js');
 const userModel = require('../models/userModel.js');
 const diceCraftService = require('../services/diceCraftService.js');
-const diceModifierModel = require('../models/diceModifierModel.js');
-const diceSocketModel = require('../models/diceSocketModel.js');
+const { isCraftableMechanic, isSocketableMechanic } = require('../utils/diceEssenceCraft.js');
 const {
-	buildCraftedDiceName,
-	computeEffectiveDiceStats,
-	isCraftableMechanic,
-	isEssenceAffixModifier,
-	formatModifierRow,
-	buildImplicitModifiers,
-	buildEffectiveStatRows,
-	computePlayerBonusesFromModifiers,
-} = require('../utils/diceEssenceCraft.js');
-const { formatSocketRow, isSocketableMechanic } = require('../utils/diceSockets.js');
+	formatCompactDiceItem,
+	formatCompactEquippedItem,
+	formatCompactStackableItem,
+	parseStatsSnapshot,
+} = require('../utils/diceItemSnapshot.js');
 
 const ADMIN_CRAFTING_MATERIAL_QUANTITY = 999;
 const ADMIN_DICE_GRANT_COUNT = 2;
-
-function formatUserDiceInventoryRow(row, modifiers = [], sockets = []) {
-	const essenceModifiers = modifiers.filter(isEssenceAffixModifier);
-	const implicits = buildImplicitModifiers(row);
-
-	return {
-		id: row.id,
-		dice_instance_id: row.id,
-		loot_id: row.loot_id,
-		quantity: 1,
-		is_unique_dice: true,
-		name: row.name,
-		crafted_name: buildCraftedDiceName(row.name, essenceModifiers),
-		mechanic: row.mechanic,
-		stat_description: row.stat_description,
-		statline: row.statline,
-		lore: row.lore,
-		rarity: row.rarity || 'Common',
-		drop_rarity_score: Number(row.drop_rarity_score) || 100,
-		craft_cost: row.craft_cost,
-		image_key: row.image_key,
-		item_level: Number(row.item_level) || 1,
-		socket_count: Number(row.socket_count) || 0,
-		implicits,
-		modifiers: essenceModifiers,
-		sockets,
-	};
-}
-
-function formatEquippedDice(row, modifiers = [], sockets = []) {
-	if (!row?.loot_id || !row?.image_key) return null;
-
-	const essenceModifiers = modifiers.filter(isEssenceAffixModifier);
-	const craftedName = buildCraftedDiceName(row.name, essenceModifiers);
-	const effectiveStats = computeEffectiveDiceStats(row, essenceModifiers, sockets);
-	const playerBonuses = computePlayerBonusesFromModifiers(essenceModifiers);
-	const implicits = buildImplicitModifiers(row);
-
-	return {
-		dice_instance_id: row.dice_instance_id,
-		loot_id: row.loot_id,
-		name: row.name,
-		crafted_name: craftedName,
-		stat_description: row.stat_description,
-		lore: row.lore,
-		rarity: row.rarity || 'Common',
-		drop_rarity_score: Number(row.drop_rarity_score) || 100,
-		image_key: row.image_key,
-		quantity: 1,
-		item_level: Number(row.item_level) || 1,
-		socket_count: Number(row.socket_count) || 0,
-		implicits,
-		modifiers: essenceModifiers,
-		sockets,
-		stats: effectiveStats,
-		effective_stats: buildEffectiveStatRows(effectiveStats, playerBonuses),
-	};
-}
-
-function buildDiceGearPayload(item, gear) {
-	return {
-		dice_instance_id: item.id || item.dice_instance_id,
-		loot_id: item.loot_id,
-		name: item.name,
-		stat_description: item.stat_description,
-		lore: item.lore,
-		rarity: item.rarity || 'Common',
-		drop_rarity_score: Number(item.drop_rarity_score) || 100,
-		image_key: gear.image_key,
-		side_1: gear.side_1,
-		side_2: gear.side_2,
-		side_3: gear.side_3,
-		side_4: gear.side_4,
-		side_5: gear.side_5,
-		side_6: gear.side_6,
-		no_of_rolls: gear.no_of_rolls,
-		duplication_chance: gear.duplication_chance,
-		duplication_number: gear.duplication_number,
-		crit_chance: gear.crit_chance,
-		crit_power: gear.crit_power,
-		base_flat_damage: gear.flat_damage,
-		item_level: item.item_level || 1,
-		socket_count: item.socket_count || 0,
-	};
-}
-
-function loadFormattedDiceInstance(userId, diceInstanceId, callback) {
-	userDiceModel.selectById({ userId, diceInstanceId }, (diceError, diceRows) => {
-		if (diceError) return callback(diceError);
-
-		const item = diceRows[0];
-		if (!item?.loot_id) {
-			return callback(null, null);
-		}
-
-		diceGearModel.selectByLootId({ lootId: item.loot_id }, (gearError, gearRows) => {
-			if (gearError) return callback(gearError);
-
-			const gear = gearRows[0];
-			if (!gear) {
-				return callback(null, null);
-			}
-
-			diceCraftService.loadModifiersAndSockets(userId, diceInstanceId, (loadError, { modifiers, sockets }) => {
-				if (loadError) return callback(loadError);
-
-				callback(
-					null,
-					formatEquippedDice(buildDiceGearPayload(item, gear), modifiers, sockets)
-				);
-			});
-		});
-	});
-}
-
-function loadEquippedDice(userId, callback) {
-	diceGearModel.selectEquippedForUser({ userId }, (error, results) => {
-		if (error) return callback(error);
-
-		const equippedRow = results[0];
-		if (!equippedRow?.loot_id || !equippedRow?.dice_instance_id) {
-			return callback(null, null);
-		}
-
-		diceCraftService.loadModifiersAndSockets(
-			userId,
-			equippedRow.dice_instance_id,
-			(modifierError, { modifiers, sockets }) => {
-				if (modifierError) return callback(modifierError);
-				callback(null, formatEquippedDice(equippedRow, modifiers, sockets));
-			}
-		);
-	});
-}
 
 module.exports.getInventoryById = (req, res, next) => {
 	const userId = res.locals.userId;
 	let loadError = null;
 	let consumables = [];
 	let diceRows = [];
-	let modifierRows = [];
-	let socketRows = [];
 	let equippedRow = null;
-	let pending = 5;
+	let pending = 3;
 
 	const done = () => {
 		pending -= 1;
@@ -175,43 +33,15 @@ module.exports.getInventoryById = (req, res, next) => {
 			return res.status(500).json(loadError);
 		}
 
-		const modifiersByDie = new Map();
-		(modifierRows || []).forEach((row) => {
-			const formatted = formatModifierRow(row);
-			if (!isEssenceAffixModifier(formatted)) return;
-			const list = modifiersByDie.get(formatted.dice_instance_id) || [];
-			list.push(formatted);
-			modifiersByDie.set(formatted.dice_instance_id, list);
-		});
-
-		const socketsByDie = new Map();
-		(socketRows || []).forEach((row) => {
-			const formatted = formatSocketRow(row);
-			const list = socketsByDie.get(formatted.dice_instance_id) || [];
-			list.push(formatted);
-			socketsByDie.set(formatted.dice_instance_id, list);
-		});
-
 		const equippedDice =
 			equippedRow?.loot_id && equippedRow?.dice_instance_id
-				? formatEquippedDice(
-						equippedRow,
-						modifiersByDie.get(equippedRow.dice_instance_id) || [],
-						socketsByDie.get(equippedRow.dice_instance_id) || []
-					)
+				? formatCompactEquippedItem(equippedRow)
 				: null;
 
-		const diceInventory = (diceRows || []).map((row) =>
-			formatUserDiceInventoryRow(
-				row,
-				modifiersByDie.get(row.id) || [],
-				socketsByDie.get(row.id) || []
-			)
-		);
+		const diceInventory = (diceRows || []).map((row) => formatCompactDiceItem(row));
 
-		res.locals.inventory = [...diceInventory, ...(consumables || [])];
+		res.locals.inventory = [...diceInventory, ...(consumables || []).map(formatCompactStackableItem)];
 		res.locals.equippedDice = equippedDice;
-		res.locals.diceModifiers = equippedDice?.modifiers || [];
 		res.locals.is_admin =
 			res.locals.is_admin ?? ['admin', 'god'].includes(res.locals.user_data?.[0]?.account_role);
 		next();
@@ -229,18 +59,6 @@ module.exports.getInventoryById = (req, res, next) => {
 		done();
 	});
 
-	diceModifierModel.selectAllByUserId({ userId }, (error, results) => {
-		if (error) loadError = error;
-		modifierRows = results || [];
-		done();
-	});
-
-	diceSocketModel.selectAllByUserId({ userId }, (error, results) => {
-		if (error) loadError = error;
-		socketRows = results || [];
-		done();
-	});
-
 	diceGearModel.selectEquippedForUser({ userId }, (error, results) => {
 		if (error) loadError = error;
 		equippedRow = results?.[0] || null;
@@ -250,68 +68,72 @@ module.exports.getInventoryById = (req, res, next) => {
 
 function formatConsumableInventoryRow(row) {
 	if (!row) return null;
-
-	return {
-		id: row.id,
-		user_id: row.user_id,
-		loot_id: row.loot_id,
-		quantity: Number(row.quantity) || 0,
-		name: row.name,
-		mechanic: row.mechanic,
-		stat_description: row.stat_description,
-		statline: row.statline,
-		lore: row.lore,
-		rarity: row.rarity,
-		craft_cost: row.craft_cost,
-		image_key: row.image_key,
-	};
+	return formatCompactStackableItem(row);
 }
 
 module.exports.applyDiceMutationInventory = (req, res, next) => {
 	const userId = res.locals.userId;
-	const dieRow = res.locals.craftDieRow;
-	const modifiers = res.locals.updatedModifiers || [];
-	const sockets = res.locals.updatedSockets || [];
+	const diceInstanceId = res.locals.craftDieRow?.id || res.locals.targetDiceInstanceId;
 	const consumableLootId = res.locals.consumableLootId;
-	const diceInstanceId = dieRow?.id;
 	const equippedId = res.locals.user_data?.[0]?.equipped_dice_id;
 
-	if (!dieRow) {
+	if (!diceInstanceId) {
 		return res.status(500).json({ message: 'Mutation inventory context missing.' });
 	}
 
-	const formattedDie = formatUserDiceInventoryRow(dieRow, modifiers, sockets);
-	const equippedRow = { ...dieRow, dice_instance_id: dieRow.id };
+	const finishPatch = (snapshot) => {
+		userDiceModel.selectById({ userId, diceInstanceId }, (selectError, rows) => {
+			if (selectError) {
+				console.error('Error loading patched die:', selectError);
+				return res.status(500).json(selectError);
+			}
 
-	const sendPatch = (consumables) => {
-		res.locals.inventoryPatch = {
-			dice: [formattedDie],
-			consumables,
-		};
+			const dieRow = rows[0];
+			const snapshotData = snapshot || parseStatsSnapshot(dieRow?.stats_snapshot);
+			const formattedDie = formatCompactDiceItem(dieRow, snapshotData);
 
-		if (equippedId && equippedId === diceInstanceId) {
-			res.locals.equippedDice = formatEquippedDice(equippedRow, modifiers, sockets);
-		}
+			const sendPatch = (consumables) => {
+				res.locals.inventoryPatch = {
+					dice: [formattedDie],
+					consumables,
+				};
 
-		res.locals.is_admin = ['admin', 'god'].includes(res.locals.user_data?.[0]?.account_role);
-		next();
+				if (equippedId && equippedId === diceInstanceId) {
+					res.locals.equippedDice = formatCompactEquippedItem(dieRow, snapshotData);
+				}
+
+				res.locals.is_admin = ['admin', 'god'].includes(res.locals.user_data?.[0]?.account_role);
+				next();
+			};
+
+			if (!consumableLootId) {
+				return sendPatch([]);
+			}
+
+			inventoryModel.getItemFromInventory({ userId, lootId: consumableLootId }, (error, itemRows) => {
+				if (error) {
+					console.error('Error loading consumed item:', error);
+					return res.status(500).json(error);
+				}
+
+				const consumable = formatConsumableInventoryRow(itemRows[0]);
+				sendPatch(consumable ? [consumable] : [{ lid: consumableLootId, q: 0, m: 'item' }]);
+			});
+		});
 	};
 
-	if (!consumableLootId) {
-		return sendPatch([]);
-	}
-
-	inventoryModel.getItemFromInventory({ userId, lootId: consumableLootId }, (error, rows) => {
-		if (error) {
-			console.error('Error loading consumed item:', error);
-			return res.status(500).json(error);
+	diceCraftService.persistDiceSnapshotAndSync(
+		userId,
+		diceInstanceId,
+		res.locals.user_data,
+		(persistError, snapshot) => {
+			if (persistError) {
+				console.error('Error persisting dice snapshot:', persistError);
+				return res.status(500).json(persistError);
+			}
+			finishPatch(snapshot);
 		}
-
-		const consumable = formatConsumableInventoryRow(rows[0]);
-		sendPatch(
-			consumable ? [consumable] : [{ loot_id: consumableLootId, quantity: 0 }]
-		);
-	});
+	);
 };
 
 module.exports.useItemInInventory = (req, res, next) => {
@@ -336,13 +158,10 @@ module.exports.useItemInInventory = (req, res, next) => {
 			res.status(400).json({ message: 'Drag this essence onto your equipped die to craft it.' });
 		} else if (isSocketableMechanic(results[0].mechanic)) {
 			res.status(400).json({ message: 'Drag this weighting stone onto a die to socket it.' });
-		} else if (results[0].craft_cost > res.locals.user_data[0].reputation) {
-			res.status(403).json({ message: 'Not enough reputation' });
 		} else {
 			res.locals.itemName = results[0].name;
 			res.locals.statline = results[0].statline;
 			res.locals.mechanic = results[0].mechanic;
-			res.locals.craft_cost = results[0].craft_cost;
 			next();
 		}
 	};
@@ -382,15 +201,20 @@ module.exports.equipDiceFromInventory = (req, res, next) => {
 				res.locals.user_data[0].equipped_dice_id = diceInstanceId;
 			}
 
-			diceCraftService.syncEquippedDiceStats(userId, res.locals.user_data, (syncError) => {
-				if (syncError) {
-					console.error('Error syncing equipped dice stats:', syncError);
-					return res.status(500).json(syncError);
-				}
+			diceCraftService.persistDiceSnapshotAndSync(
+				userId,
+				diceInstanceId,
+				res.locals.user_data,
+				(syncError) => {
+					if (syncError) {
+						console.error('Error syncing equipped dice:', syncError);
+						return res.status(500).json(syncError);
+					}
 
-				res.locals.message = `Equipped ${item.name}.`;
-				next();
-			});
+					res.locals.message = `Equipped ${item.name}.`;
+					next();
+				}
+			);
 		});
 	});
 };
@@ -460,13 +284,25 @@ module.exports.grantAdminCraftingKit = (req, res, next) => {
 							itemLevel: playerLevel,
 							dropRarityScore,
 						},
-						(addError) => {
-						if (addError) {
-							console.error('Error granting admin dice:', addError);
-							return res.status(500).json(addError);
+						(addError, addResult) => {
+							if (addError) {
+								console.error('Error granting admin dice:', addError);
+								return res.status(500).json(addError);
+							}
+
+							diceCraftService.rebuildAndPersistDiceSnapshot(
+								userId,
+								addResult.insertId,
+								(rebuildError) => {
+									if (rebuildError) {
+										console.error('Error snapshot for granted die:', rebuildError);
+										return res.status(500).json(rebuildError);
+									}
+									grantNextDie();
+								}
+							);
 						}
-						grantNextDie();
-					});
+					);
 				}
 
 				grantNextDie();
@@ -477,8 +313,16 @@ module.exports.grantAdminCraftingKit = (req, res, next) => {
 	});
 };
 
-module.exports.loadEquippedDice = loadEquippedDice;
-module.exports.loadFormattedDiceInstance = loadFormattedDiceInstance;
+module.exports.loadEquippedDice = (userId, callback) => {
+	diceGearModel.selectEquippedForUser({ userId }, (error, results) => {
+		if (error) return callback(error);
+		const equippedRow = results[0];
+		if (!equippedRow?.loot_id || !equippedRow?.dice_instance_id) {
+			return callback(null, null);
+		}
+		callback(null, formatCompactEquippedItem(equippedRow));
+	});
+};
 
 module.exports.unequipDice = (req, res, next) => {
 	const userId = res.locals.userId;

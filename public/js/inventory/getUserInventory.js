@@ -35,12 +35,40 @@ function registerInventoryTabs() {
 	});
 }
 
+function isDiceItem(item) {
+	return item?.m === 'equip_dice' || item?.mechanic === 'equip_dice';
+}
+
+function getDiceInstanceId(item) {
+	return item?.id ?? item?.dice_instance_id;
+}
+
+function getItemLootId(item) {
+	return item?.lid ?? item?.loot_id;
+}
+
+function getItemQuantity(item) {
+	return Number(item?.q ?? item?.quantity) || 0;
+}
+
+function getItemName(item) {
+	return item?.n ?? item?.name ?? 'Item';
+}
+
+function getItemRarity(item) {
+	return item?.r ?? item?.rarity ?? 'Common';
+}
+
+function getItemMechanic(item) {
+	return item?.m ?? item?.mechanic;
+}
+
 function filterInventoryByTab(items, tab) {
 	if (tab === 'dice') {
-		return items.filter((item) => item.mechanic === 'equip_dice');
+		return items.filter((item) => isDiceItem(item));
 	}
 	if (tab === 'items') {
-		return items.filter((item) => item.mechanic !== 'equip_dice');
+		return items.filter((item) => !isDiceItem(item));
 	}
 	return items;
 }
@@ -84,7 +112,7 @@ function syncAdminGrantButton(isAdmin) {
 // Fetch and render inventory data
 function loadInventoryData({ useItem = null, immediate = false } = {}) {
 	if (useItem) {
-		const url = `${currentUrl}/api/inventory/${useItem.loot_id}`;
+		const url = `${currentUrl}/api/inventory/${getItemLootId(useItem)}`;
 		fetchMethod(url, useItemCallback(useItem), 'PUT', null, token);
 	}
 
@@ -151,10 +179,11 @@ function mergeInventoryPatch(inventory, patch) {
 	});
 
 	(patch.consumables || []).forEach((item) => {
+		const itemLootId = getItemLootId(item);
 		const index = nextInventory.findIndex(
-			(entry) => entry.loot_id === item.loot_id && entry.mechanic !== 'equip_dice'
+			(entry) => getItemLootId(entry) === itemLootId && !isDiceItem(entry)
 		);
-		if (Number(item.quantity) <= 0) {
+		if (getItemQuantity(item) <= 0) {
 			if (index >= 0) nextInventory.splice(index, 1);
 			return;
 		}
@@ -205,7 +234,7 @@ function bindInventoryEvents(slot, tooltip, item) {
 	slot.addEventListener('mouseenter', () => showTooltip(tooltip, slot));
 	slot.addEventListener('mouseleave', () => hideTooltip(tooltip));
 	slot.addEventListener('click', () => {
-		if (item.mechanic === 'equip_dice') {
+		if (isDiceItem(item)) {
 			openEquipOverlay(item);
 			return;
 		}
@@ -260,7 +289,7 @@ function renderInventoryItems(inventory) {
 	grid.innerHTML = '';
 	const order = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
 	const filtered = filterInventoryByTab(
-		inventory.filter((i) => i.quantity > 0),
+		inventory.filter((i) => getItemQuantity(i) > 0),
 		activeInventoryTab
 	);
 
@@ -276,42 +305,44 @@ function renderInventoryItems(inventory) {
 	}
 
 	filtered
-		.sort((a, b) => order[b.rarity?.toLowerCase()] - order[a.rarity?.toLowerCase()])
+		.sort((a, b) => order[getItemRarity(b).toLowerCase()] - order[getItemRarity(a).toLowerCase()])
 		.forEach((item) => {
 			try {
 				createInventorySlot(item, grid);
 			} catch (error) {
-				console.error('Failed to render inventory slot:', item?.name, error);
+				console.error('Failed to render inventory slot:', getItemName(item), error);
 			}
 		});
 }
 
 // Create a single inventory slot
 function createInventorySlot(item, grid) {
-	const rarity = `rarity-${(item.rarity || 'common').toLowerCase()}`;
-	const isDice = item.mechanic === 'equip_dice';
+	const rarity = `rarity-${getItemRarity(item).toLowerCase()}`;
+	const isDice = isDiceItem(item);
+	const itemName = getItemName(item);
 	const slot = document.createElement('div');
 	slot.className = `inventory-slot inventory-entry ${rarity}${isDice ? ' inventory-slot--dice' : ''}`;
-	slot.dataset.name = item.name.toLowerCase();
+	slot.dataset.name = itemName.toLowerCase();
 
 	const img = document.createElement('img');
+	const lootId = getItemLootId(item);
 	img.src =
 		isDice && typeof getDiceImageSrc === 'function'
 			? getDiceImageSrc(item)
 			: typeof getLootImageSrc === 'function'
-				? getLootImageSrc(item.loot_id)
-				: `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${item.loot_id}.png`;
-	img.alt = item.name;
+				? getLootImageSrc(lootId)
+				: `https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/items/L${lootId}.png`;
+	img.alt = itemName;
 	img.draggable = false;
 
 	const count = document.createElement('div');
 	count.className = 'inventory-count';
-	count.textContent = `x${item.quantity}`;
+	count.textContent = `x${getItemQuantity(item)}`;
 
 	const tooltip = buildTooltip(item, rarity);
 
 	slot.appendChild(img);
-	if (!isDice && item.quantity > 1) slot.appendChild(count);
+	if (!isDice && getItemQuantity(item) > 1) slot.appendChild(count);
 	slot.appendChild(tooltip);
 	grid.appendChild(slot);
 
@@ -331,54 +362,10 @@ function createInventorySlot(item, grid) {
 function buildTooltip(item, rarity) {
 	const tip = document.createElement('div');
 	tip.className = `tooltip-box ${rarity}`;
-
-	const isCraftable =
-		typeof window.isCraftableItem === 'function' && window.isCraftableItem(item);
-	const isSocketable =
-		typeof window.isSocketableItem === 'function' && window.isSocketableItem(item);
-	const isDice = item.mechanic === 'equip_dice';
-	const affixType = isCraftable ? getAffixTypeForMechanic(item.mechanic) : null;
-	const flavor = isCraftable ? getAffixFlavorName(item.mechanic) : '';
-
-	const title = item.name;
-	const statLine = item.stat_description || '';
-
-	const implicitHtml =
-		isDice && Array.isArray(item.implicits) && item.implicits.length
-			? `<div class="tooltip-section-label">Implicits</div><ul class="tooltip-affix-list tooltip-implicit-list">${renderImplicitListHtml(item.implicits)}</ul>`
-			: '';
-
-	const affixHtml =
-		isDice && Array.isArray(item.modifiers) && item.modifiers.length
-			? `<div class="tooltip-section-label">Crafted</div><ul class="tooltip-affix-list">${renderTooltipAffixListHtml(item.modifiers)}</ul>`
-			: '';
-
-	const socketHtml =
-		isDice && Number(item.socket_count) > 0
-			? `<div class="tooltip-section-label">Sockets (${item.sockets?.length || 0}/${item.socket_count})</div><ul class="tooltip-affix-list tooltip-socket-list">${renderSocketListHtml(item.sockets || [], item.socket_count, 'Empty')}</ul>`
-			: '';
-
-	const actionHtml = isDice
-		? '<div class="tooltip-action">Click to equip · drop essences to craft · drop stones to socket</div>'
-		: isCraftable
-			? '<div class="tooltip-action">Drag onto a die to apply</div>'
-			: isSocketable
-				? '<div class="tooltip-action">Drag onto a die to socket</div>'
-				: '';
-
-	tip.innerHTML = `
-		${affixType ? formatAffixBadge(affixType) : ''}
-		<div class="tooltip-title">${title}</div>
-		${isDice ? `<div class="tooltip-stat">Item Level ${item.item_level || 1}</div>` : ''}
-		${isDice && Number(item.socket_count) > 0 ? `<div class="tooltip-stat">${item.socket_count} Socket${item.socket_count > 1 ? 's' : ''}</div>` : ''}
-		${statLine ? `<div class="tooltip-stat">${statLine}</div>` : ''}
-		${isCraftable && flavor ? `<div class="tooltip-flavor">${flavor}</div>` : ''}
-		${implicitHtml}
-		${affixHtml}
-		${socketHtml}
-		<div class="tooltip-rarity">${item.rarity || ''}</div>
-		${actionHtml}
-	`;
+	tip.innerHTML =
+		typeof buildInventoryTooltipHtml === 'function'
+			? buildInventoryTooltipHtml(item)
+			: `<div class="tooltip-title">${getItemName(item)}</div>`;
 	return tip;
 }
 
@@ -441,9 +428,9 @@ function hideTooltip(tip) {
 
 // Open overlay for item use confirmation
 function openUseOverlay(item) {
-	document.getElementById('useItemTitle').textContent = `Use "${item.name}"?`;
+	document.getElementById('useItemTitle').textContent = `Use "${getItemName(item)}"?`;
 	document.getElementById('useItemDesc').textContent =
-		item.stat_description || 'Are you sure you want to use this item?';
+		item.d || item.stat_description || 'Are you sure you want to use this item?';
 	document.getElementById('confirmUseBtn').dataset.item = JSON.stringify(item);
 	document.getElementById('useItemOverlay').classList.remove('d-none');
 }

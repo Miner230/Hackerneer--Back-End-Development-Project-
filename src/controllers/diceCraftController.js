@@ -29,7 +29,6 @@ function consumeEssenceAndRespond(res, next, payload) {
 			return res.status(404).json({ message: 'Failed to consume essence item.' });
 		}
 
-		res.locals.craft_cost = essence.craft_cost;
 		res.locals.itemName = essence.name;
 		res.locals.targetDiceInstanceId = diceInstanceId;
 		res.locals.craftAction = craftAction;
@@ -74,9 +73,6 @@ module.exports.craftEssenceOntoDice = (req, res, next) => {
 		}
 		if (!isCraftableMechanic(essence.mechanic)) {
 			return res.status(400).json({ message: 'This item cannot be applied to dice.' });
-		}
-		if (essence.craft_cost > res.locals.user_data[0].reputation) {
-			return res.status(403).json({ message: 'Not enough reputation to apply this essence.' });
 		}
 
 		const essenceFamily = getEssenceFamily(essence.mechanic);
@@ -207,38 +203,11 @@ module.exports.craftEssenceOntoDice = (req, res, next) => {
 };
 
 module.exports.finalizeCraft = (req, res, next) => {
-	const userId = res.locals.userId;
-	const dieRow = res.locals.craftDieRow;
-	const modifiers = res.locals.updatedModifiers || [];
-	const diceInstanceId = res.locals.targetDiceInstanceId;
-	const equippedId = res.locals.user_data?.[0]?.equipped_dice_id;
-
-	const complete = (socketError, sockets) => {
-		if (socketError) {
-			console.error('Error loading crafted die sockets:', socketError);
-			return res.status(500).json(socketError);
-		}
-
-		res.locals.updatedSockets = sockets || [];
-
-		const crafted = res.locals.craftedModifier;
-		const verb = res.locals.craftAction === 'upgrade' ? 'Upgraded' : 'Applied';
-		const valueText = formatCraftedModifierDisplay(crafted);
-		res.locals.message = `${verb} ${crafted.modifier_name} (${valueText}) to your die.`;
-
-		applyDiceMutationInventory(req, res, next);
-	};
-
-	if (equippedId === diceInstanceId) {
-		return diceCraftService.syncDiceInstanceStatsFromData(
-			userId,
-			dieRow,
-			modifiers,
-			complete
-		);
-	}
-
-	diceCraftService.loadSockets(userId, diceInstanceId, complete);
+	const crafted = res.locals.craftedModifier;
+	const verb = res.locals.craftAction === 'upgrade' ? 'Upgraded' : 'Applied';
+	const valueText = formatCraftedModifierDisplay(crafted);
+	res.locals.message = `${verb} ${crafted.modifier_name} (${valueText}) to your die.`;
+	applyDiceMutationInventory(req, res, next);
 };
 
 module.exports.attachDiceCraftingData = (req, res, next) => {
