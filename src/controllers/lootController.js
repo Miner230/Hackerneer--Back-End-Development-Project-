@@ -3,7 +3,7 @@ const userDiceModel = require('../models/userDiceModel.js');
 const diceGearModel = require('../models/diceGearModel.js');
 const mechanicMap = require('../utils/mechanicMap.js');
 const { rollDiceItemLevel } = require('../utils/diceItemLevel.js');
-const { bulkRollLoot, insertCallback, rollMonsterLoot, rollMonsterDiceDrop, rollInstanceRarity } = require('../middleware/lootConfigs.js');
+const { bulkRollLoot, insertCallback, rollMonsterLoot, rollMonsterDiceDrop } = require('../middleware/lootConfigs.js');
 
 // Get all loot items
 module.exports.getAllLoot = (req, res, next) => {
@@ -142,13 +142,11 @@ module.exports.grantMonsterDrops = (req, res, next) => {
 	function grantDrop(item, callback) {
 		if (item.mechanic === 'equip_dice') {
 			const itemLevel = rollDiceItemLevel(instance.level);
-			const instanceRarity = item.instance_rarity || rollInstanceRarity(instance.item_rarity);
 			return userDiceModel.addUserDice(
 				{
 					userId,
 					lootId: item.id,
 					itemLevel,
-					instanceRarity,
 					dropRarityScore: instance.item_rarity,
 				},
 				(error, result) => {
@@ -162,7 +160,6 @@ module.exports.grantMonsterDrops = (req, res, next) => {
 								...item,
 								dice_instance_id: result.insertId,
 								item_level: itemLevel,
-								instance_rarity: instanceRarity,
 								socket_count: Number(diceRow?.socket_count) || 0,
 							});
 						}

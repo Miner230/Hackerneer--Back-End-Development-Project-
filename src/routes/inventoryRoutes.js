@@ -36,6 +36,7 @@ router.put(
 	diceCraftController.craftEssenceOntoDice,
 	userController.removeReputation,
 	diceCraftController.finalizeCraft,
+	inventoryController.getInventoryById,
 	responseController.sendData
 );
 
@@ -46,6 +47,7 @@ router.put(
 	diceSocketController.socketItemOntoDice,
 	userController.removeReputation,
 	diceSocketController.finalizeSocket,
+	inventoryController.getInventoryById,
 	responseController.sendData
 );
 
@@ -54,6 +56,7 @@ router.put(
 	verifyToken,
 	userController.readUserById,
 	inventoryController.unequipDice,
+	inventoryController.getInventoryById,
 	responseController.sendData
 );
 
@@ -62,6 +65,7 @@ router.put(
 	verifyToken,
 	userController.readUserById,
 	inventoryController.equipDiceFromInventory,
+	inventoryController.getInventoryById,
 	responseController.sendData
 );
 
@@ -74,6 +78,7 @@ router.put(
 	lootController.handleMechanics, 
 	userController.removeReputation, 
 	lootController.removeQnt, 
+	inventoryController.getInventoryById,
 	responseController.sendData
 );
 

@@ -1,14 +1,18 @@
 // Run when the page loads
 document.addEventListener('DOMContentLoaded', () => {
 	registerInventoryTabs();
-	loadInventoryData();
+	loadInventoryData({ immediate: true });
 	registerInventoryOverlayEvents();
 	registerAdminGrantButton();
 });
 
 const INVENTORY_TAB_STORAGE_KEY = 'inventoryActiveTab';
+const INVENTORY_RELOAD_DEBOUNCE_MS = 150;
 let cachedInventory = [];
 let activeInventoryTab = 'all';
+let inventoryReloadTimer = null;
+let inventoryRequestInFlight = false;
+let pendingInventoryForceReload = false;
 
 function registerInventoryTabs() {
 	const savedTab = localStorage.getItem(INVENTORY_TAB_STORAGE_KEY);
@@ -56,7 +60,9 @@ function registerAdminGrantButton() {
 					if (data?.message) {
 						showNotif({ status, message: data.message });
 					}
-					renderInventoryGrid(status, data);
+					if (!applyInventoryResponse(data)) {
+						renderInventoryGrid(status, data);
+					}
 					return;
 				}
 				const message = data?.message || 'Failed to grant crafting kit.';
@@ -76,12 +82,78 @@ function syncAdminGrantButton(isAdmin) {
 }
 
 // Fetch and render inventory data
-function loadInventoryData({ useItem = null } = {}) {
-	fetchMethod(`${currentUrl}/api/inventory/`, renderInventoryGrid, 'GET', null, token);
+function loadInventoryData({ useItem = null, immediate = false } = {}) {
 	if (useItem) {
 		const url = `${currentUrl}/api/inventory/${useItem.loot_id}`;
 		fetchMethod(url, useItemCallback(useItem), 'PUT', null, token);
 	}
+
+	scheduleInventoryReload(immediate);
+}
+
+function scheduleInventoryReload(immediate = false) {
+	if (immediate) {
+		if (inventoryReloadTimer) {
+			clearTimeout(inventoryReloadTimer);
+			inventoryReloadTimer = null;
+		}
+		pendingInventoryForceReload = false;
+		return fetchInventoryNow();
+	}
+
+	if (inventoryRequestInFlight) {
+		pendingInventoryForceReload = true;
+		return;
+	}
+
+	if (inventoryReloadTimer) {
+		clearTimeout(inventoryReloadTimer);
+	}
+
+	inventoryReloadTimer = setTimeout(() => {
+		inventoryReloadTimer = null;
+		fetchInventoryNow();
+	}, INVENTORY_RELOAD_DEBOUNCE_MS);
+}
+
+function fetchInventoryNow() {
+	if (inventoryRequestInFlight) {
+		pendingInventoryForceReload = true;
+		return;
+	}
+
+	inventoryRequestInFlight = true;
+	fetchMethod(`${currentUrl}/api/inventory/`, (status, data) => {
+		inventoryRequestInFlight = false;
+		renderInventoryGrid(status, data);
+
+		if (pendingInventoryForceReload) {
+			pendingInventoryForceReload = false;
+			fetchInventoryNow();
+		}
+	}, 'GET', null, token);
+}
+
+function applyInventoryResponse(data) {
+	if (!data) return false;
+
+	let applied = false;
+
+	if (Array.isArray(data.inventory)) {
+		cachedInventory = data.inventory;
+		renderInventoryItems(cachedInventory);
+		applied = true;
+	}
+
+	if (Object.prototype.hasOwnProperty.call(data, 'equippedDice')) {
+		if (typeof syncCraftingPanelFromResponse === 'function') {
+			syncCraftingPanelFromResponse(data);
+		}
+		applied = true;
+	}
+
+	syncAdminGrantButton(Boolean(data.is_admin));
+	return applied;
 }
 
 // Set up global event listeners for overlay buttons
@@ -263,8 +335,6 @@ function buildTooltip(item, rarity) {
 		${affixType ? formatAffixBadge(affixType) : ''}
 		<div class="tooltip-title">${title}</div>
 		${isDice ? `<div class="tooltip-stat">Item Level ${item.item_level || 1}</div>` : ''}
-		${isDice ? `<div class="tooltip-stat">Instance Rarity ${item.instance_rarity || item.rarity || 'Common'}</div>` : ''}
-		${isDice && item.loot_rarity && item.loot_rarity !== (item.instance_rarity || item.rarity) ? `<div class="tooltip-stat">Die Type ${item.loot_rarity}</div>` : ''}
 		${isDice && Number(item.socket_count) > 0 ? `<div class="tooltip-stat">${item.socket_count} Socket${item.socket_count > 1 ? 's' : ''}</div>` : ''}
 		${statLine ? `<div class="tooltip-stat">${statLine}</div>` : ''}
 		${isCraftable && flavor ? `<div class="tooltip-flavor">${flavor}</div>` : ''}
@@ -359,10 +429,15 @@ function useItemCallback(item) {
 		showNotif({ status, message: data.message });
 		if (status === 200) {
 			document.getElementById('useItemOverlay').classList.add('d-none');
-			loadInventoryData();
+			if (typeof applyInventoryResponse === 'function' && applyInventoryResponse(data)) {
+				return;
+			}
+			loadInventoryData({ immediate: true });
 		}
 	};
 }
 
 window.showInventoryTooltip = showTooltip;
 window.hideInventoryTooltip = hideTooltip;
+window.applyInventoryResponse = applyInventoryResponse;
+window.loadInventoryData = loadInventoryData;

@@ -291,3 +291,26 @@ function showConfettiOverlay(message = 'Action Complete!') {
 		ctx.clearRect(0, 0, canvasW, canvasH);
 	}, 2000);
 }
+
+function getCachedUserId() {
+	const id = Number(sessionStorage.getItem('currentUserId'));
+	return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function fetchCurrentUserId(callback) {
+	const cachedId = getCachedUserId();
+	if (cachedId) {
+		callback(cachedId);
+		return;
+	}
+
+	if (!token) return;
+
+	fetchMethod(`${currentUrl}/api/users/userData`, (status, data) => {
+		const id = status === 200 ? Number(data?.user_data?.[0]?.id) : NaN;
+		if (Number.isFinite(id) && id > 0) {
+			sessionStorage.setItem('currentUserId', String(id));
+			callback(id);
+		}
+	}, 'GET', null, token);
+}

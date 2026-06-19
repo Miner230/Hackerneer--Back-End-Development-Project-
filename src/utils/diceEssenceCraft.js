@@ -1,6 +1,6 @@
 const { DEFAULT_DICE_STATS } = require('../models/diceModel.js');
 const { computeGearFlatDamageRange } = require('./diceItemLevel.js');
-const { applyRarityScaledGearStats, BASIC_DIE_BASELINE: RARITY_BASELINE } = require('./diceRarityImplicits.js');
+const { BASIC_DIE_BASELINE: RARITY_BASELINE } = require('./diceTierDefinitions.js');
 
 const MAX_PREFIXES = 3;
 const MAX_SUFFIXES = 3;
@@ -375,8 +375,7 @@ function sumModifierValues(modifiers, mechanic) {
 function buildBaseGearStats(gear) {
 	const source = gear || DEFAULT_DICE_STATS;
 	const itemLevel = Number(source.item_level ?? 1);
-	const rarityScaled = applyRarityScaledGearStats(source);
-	const baseFlatDamage = Number(rarityScaled.base_flat_damage ?? 0);
+	const baseFlatDamage = Number(source.base_flat_damage ?? source.flat_damage ?? 0);
 	const gearFlat = computeGearFlatDamageRange(baseFlatDamage, itemLevel);
 
 	return {
@@ -386,13 +385,13 @@ function buildBaseGearStats(gear) {
 		side_4: Number(source.side_4 ?? DEFAULT_DICE_STATS.side_4),
 		side_5: Number(source.side_5 ?? DEFAULT_DICE_STATS.side_5),
 		side_6: Number(source.side_6 ?? DEFAULT_DICE_STATS.side_6),
-		no_of_rolls: Number(rarityScaled.no_of_rolls ?? DEFAULT_DICE_STATS.no_of_rolls),
-		duplication_chance: Number(rarityScaled.duplication_chance ?? DEFAULT_DICE_STATS.duplication_chance),
-		duplication_number: Number(rarityScaled.duplication_number ?? DEFAULT_DICE_STATS.duplication_number),
-		crit_chance: Number(rarityScaled.crit_chance ?? DEFAULT_DICE_STATS.crit_chance),
-		crit_power: Number(rarityScaled.crit_power ?? DEFAULT_DICE_STATS.crit_power),
+		no_of_rolls: Number(source.no_of_rolls ?? DEFAULT_DICE_STATS.no_of_rolls),
+		duplication_chance: Number(source.duplication_chance ?? DEFAULT_DICE_STATS.duplication_chance),
+		duplication_number: Number(source.duplication_number ?? DEFAULT_DICE_STATS.duplication_number),
+		crit_chance: Number(source.crit_chance ?? DEFAULT_DICE_STATS.crit_chance),
+		crit_power: Number(source.crit_power ?? DEFAULT_DICE_STATS.crit_power),
 		item_level: itemLevel,
-		instance_rarity: source.instance_rarity || source.rarity || 'Common',
+		rarity: source.rarity || 'Common',
 		base_flat_damage: baseFlatDamage,
 		flat_damage_min: gearFlat.min,
 		flat_damage_max: gearFlat.max,

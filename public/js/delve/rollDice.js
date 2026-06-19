@@ -770,10 +770,9 @@ function handleDelveActionResponse(status, data) {
 			} else {
 				isCombatBusy = false;
 				if (rollBtn) rollBtn.classList.remove('rolling');
+				loadDelveInfo();
 			}
 		}
-
-		loadDelveInfo();
 	})();
 
 }

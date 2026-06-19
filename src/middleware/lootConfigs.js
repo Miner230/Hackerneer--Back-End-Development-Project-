@@ -104,7 +104,6 @@ function rollMonsterDiceDrop(lootRows, itemRarity = 0) {
 		rarity: selected.rarity,
 		quantity: 1,
 		mechanic: selected.mechanic,
-		instance_rarity: rollInstanceRarity(itemRarity),
 	};
 }
 

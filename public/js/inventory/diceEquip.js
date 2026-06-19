@@ -98,10 +98,12 @@ function confirmEquipDice() {
 		showNotif({ status, message: data.message });
 		if (status === 200) {
 			closeEquipOverlay();
-			if (typeof syncCraftingPanelFromResponse === 'function') {
+			if (typeof applyInventoryResponse === 'function') {
+				applyInventoryResponse(data);
+			} else if (typeof syncCraftingPanelFromResponse === 'function') {
 				syncCraftingPanelFromResponse(data);
+				loadInventoryData();
 			}
-			loadInventoryData();
 		}
 	};
 
@@ -112,10 +114,12 @@ function unequipDice() {
 	const callback = (status, data) => {
 		showNotif({ status, message: data.message });
 		if (status === 200) {
-			if (typeof syncCraftingPanelFromResponse === 'function') {
+			if (typeof applyInventoryResponse === 'function') {
+				applyInventoryResponse(data);
+			} else if (typeof syncCraftingPanelFromResponse === 'function') {
 				syncCraftingPanelFromResponse(data);
+				loadInventoryData();
 			}
-			loadInventoryData();
 		}
 	};
 

@@ -15,8 +15,12 @@ function applyEssenceToDie(diceInstanceId, essenceLootId = pendingEssenceLootId)
 		showNotif({ status, message: data.message });
 		if (status === 200) {
 			pendingEssenceLootId = null;
-			syncCraftingPanelFromResponse(data);
-			loadInventoryData();
+			if (typeof applyInventoryResponse === 'function') {
+				applyInventoryResponse(data);
+			} else {
+				syncCraftingPanelFromResponse(data);
+				loadInventoryData();
+			}
 		}
 	};
 
@@ -42,8 +46,12 @@ function applySocketItemToDie(diceInstanceId, lootId) {
 		craftRequestInFlight = false;
 		showNotif({ status, message: data.message });
 		if (status === 200) {
-			syncCraftingPanelFromResponse(data);
-			loadInventoryData();
+			if (typeof applyInventoryResponse === 'function') {
+				applyInventoryResponse(data);
+			} else {
+				syncCraftingPanelFromResponse(data);
+				loadInventoryData();
+			}
 		}
 	};
 

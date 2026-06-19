@@ -28,16 +28,7 @@ const STAT_LABELS = {
 	player_speed_bonus: 'Combat Speed ⚡',
 };
 
-const DICE_DESCRIPTIONS = {
-	'Basic Die':
-		'Equip for delves - balanced faces - item level on drop - 1-6 sockets',
-	'Crimson Die':
-		'Equip - high crit implicit - roll-based flat damage per face - 1-6 sockets',
-	'Bone Die':
-		'Equip - 8 rolls per attack - item level on drop - 1-6 sockets',
-	'Copper Die':
-		'Equip - duplication focus - item level on drop - 1-6 sockets',
-};
+const { getDieFamilyGearForTier, buildDiceGearStatDescription } = require('./diceTierDefinitions.js');
 
 const EDGE_FLAT_DAMAGE_RANGES = {
 	Common: { min: 1, max: 3 },
@@ -76,7 +67,8 @@ function buildLootStatDescription({ name, mechanic, statline, rarity }) {
 	}
 
 	if (mechanic === 'equip_dice') {
-		return DICE_DESCRIPTIONS[name] || 'Equip for delves - item level on drop - 1-6 sockets';
+		const gear = getDieFamilyGearForTier(name, rarity);
+		return buildDiceGearStatDescription(name, gear);
 	}
 
 	if (mechanic?.startsWith('face_')) {
@@ -99,5 +91,4 @@ module.exports = {
 	ESSENCE_STATLINE_MULTIPLIER,
 	getEssenceRollRange,
 	buildLootStatDescription,
-	DICE_DESCRIPTIONS,
 };

@@ -17,22 +17,16 @@ function fetchReviewsWithUserId(userId, reportId, token, containerSelector = '#i
 
 // Load current user data then their reviews
 function loadInitialReviewData(reportId, token) {
-	const callback = (status, userData) => {
-		if (status !== 200 || !userData?.user_data?.[0]?.id) return console.error('Failed to load user data.');
-		const userId = userData.user_data[0].id;
+	fetchCurrentUserId((userId) => {
 		fetchReviewsWithUserId(userId, reportId, token);
-	};
-	fetchMethod(`${currentUrl}/api/users/userData`, callback, 'GET', null, token);
+	});
 }
 
 // Reload reviews and re-render
 function reloadReviews(containerSelector, reportId, token) {
-	const callback = (status, userData) => {
-		if (status !== 200 || !userData?.user_data?.[0]?.id) return;
-		const userId = userData.user_data[0].id;
+	fetchCurrentUserId((userId) => {
 		fetchReviewsWithUserId(userId, reportId, token, containerSelector);
-	};
-	fetchMethod(`${currentUrl}/api/users/userData`, callback, 'GET', null, token);
+	});
 }
 
 // Handle review submit/update response

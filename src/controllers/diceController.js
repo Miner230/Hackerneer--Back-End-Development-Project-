@@ -30,7 +30,7 @@ module.exports.createNewDice = (req, res, next) => {
 module.exports.grantStarterDice = (req, res, next) => {
 	const userId = res.locals.userId;
 
-	lootModel.selectLootIdByName({ name: STARTER_DICE_NAME }, (lootError, lootRows) => {
+	lootModel.selectLootIdByName({ name: STARTER_DICE_NAME, rarity: 'Common' }, (lootError, lootRows) => {
 		if (lootError) {
 			console.error('Error grantStarterDice lookup:', lootError);
 			return res.status(500).json(lootError);
@@ -47,7 +47,6 @@ module.exports.grantStarterDice = (req, res, next) => {
 				userId,
 				lootId,
 				itemLevel: 1,
-				instanceRarity: 'Common',
 				dropRarityScore: 8,
 			},
 			(diceError, diceResult) => {

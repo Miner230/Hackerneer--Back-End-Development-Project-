@@ -18,7 +18,6 @@ const {
 	computePlayerBonusesFromModifiers,
 } = require('../utils/diceEssenceCraft.js');
 const { formatSocketRow, isSocketableMechanic } = require('../utils/diceSockets.js');
-const { rollInstanceRarity } = require('../middleware/lootConfigs.js');
 
 const ADMIN_CRAFTING_MATERIAL_QUANTITY = 999;
 const ADMIN_DICE_GRANT_COUNT = 2;
@@ -26,13 +25,11 @@ const ADMIN_DICE_GRANT_COUNT = 2;
 function formatUserDiceInventoryRow(row, modifiers = [], sockets = []) {
 	const essenceModifiers = modifiers.filter(isEssenceAffixModifier);
 	const implicits = buildImplicitModifiers(row);
-	const displayRarity = row.instance_rarity || row.rarity || 'Common';
 
 	return {
 		id: row.id,
 		dice_instance_id: row.id,
 		loot_id: row.loot_id,
-		user_id: row.user_id,
 		quantity: 1,
 		is_unique_dice: true,
 		name: row.name,
@@ -41,9 +38,7 @@ function formatUserDiceInventoryRow(row, modifiers = [], sockets = []) {
 		stat_description: row.stat_description,
 		statline: row.statline,
 		lore: row.lore,
-		rarity: displayRarity,
-		loot_rarity: row.rarity,
-		instance_rarity: displayRarity,
+		rarity: row.rarity || 'Common',
 		drop_rarity_score: Number(row.drop_rarity_score) || 100,
 		craft_cost: row.craft_cost,
 		image_key: row.image_key,
@@ -71,9 +66,7 @@ function formatEquippedDice(row, modifiers = [], sockets = []) {
 		crafted_name: craftedName,
 		stat_description: row.stat_description,
 		lore: row.lore,
-		rarity: row.instance_rarity || row.rarity,
-		loot_rarity: row.rarity,
-		instance_rarity: row.instance_rarity || row.rarity,
+		rarity: row.rarity || 'Common',
 		drop_rarity_score: Number(row.drop_rarity_score) || 100,
 		image_key: row.image_key,
 		quantity: 1,
@@ -94,8 +87,7 @@ function buildDiceGearPayload(item, gear) {
 		name: item.name,
 		stat_description: item.stat_description,
 		lore: item.lore,
-		rarity: item.rarity,
-		instance_rarity: item.instance_rarity || item.rarity,
+		rarity: item.rarity || 'Common',
 		drop_rarity_score: Number(item.drop_rarity_score) || 100,
 		image_key: gear.image_key,
 		side_1: gear.side_1,
@@ -170,72 +162,93 @@ function loadEquippedDice(userId, callback) {
 
 module.exports.getInventoryById = (req, res, next) => {
 	const userId = res.locals.userId;
+	let loadError = null;
+	let consumables = [];
+	let diceRows = [];
+	let modifierRows = [];
+	let socketRows = [];
+	let equippedRow = null;
+	let pending = 5;
 
-	inventoryModel.selectInventoryById({ userId }, (inventoryError, consumables) => {
-		if (inventoryError) {
-			console.error('Error getInventoryById:', inventoryError);
-			return res.status(500).json(inventoryError);
+	const done = () => {
+		pending -= 1;
+		if (pending > 0) return;
+
+		if (loadError) {
+			console.error('Error getInventoryById:', loadError);
+			return res.status(500).json(loadError);
 		}
 
-		userDiceModel.selectByUserId({ userId }, (diceError, diceRows) => {
-			if (diceError) {
-				console.error('Error loading user dice:', diceError);
-				return res.status(500).json(diceError);
-			}
-
-			diceModifierModel.selectAllByUserId({ userId }, (modifierError, modifierRows) => {
-				if (modifierError) {
-					console.error('Error loading die affixes:', modifierError);
-					return res.status(500).json(modifierError);
-				}
-
-				diceSocketModel.selectAllByUserId({ userId }, (socketError, socketRows) => {
-					if (socketError) {
-						console.error('Error loading die sockets:', socketError);
-						return res.status(500).json(socketError);
-					}
-
-					const modifiersByDie = new Map();
-					(modifierRows || []).forEach((row) => {
-						const formatted = formatModifierRow(row);
-						if (!isEssenceAffixModifier(formatted)) return;
-						const list = modifiersByDie.get(formatted.dice_instance_id) || [];
-						list.push(formatted);
-						modifiersByDie.set(formatted.dice_instance_id, list);
-					});
-
-					const socketsByDie = new Map();
-					(socketRows || []).forEach((row) => {
-						const formatted = formatSocketRow(row);
-						const list = socketsByDie.get(formatted.dice_instance_id) || [];
-						list.push(formatted);
-						socketsByDie.set(formatted.dice_instance_id, list);
-					});
-
-					loadEquippedDice(userId, (equippedError, equippedDice) => {
-						if (equippedError) {
-							console.error('Error loading equipped dice:', equippedError);
-							return res.status(500).json(equippedError);
-						}
-
-						const diceInventory = (diceRows || []).map((row) =>
-							formatUserDiceInventoryRow(
-								row,
-								modifiersByDie.get(row.id) || [],
-								socketsByDie.get(row.id) || []
-							)
-						);
-						res.locals.inventory = [...diceInventory, ...(consumables || [])];
-						res.locals.equippedDice = equippedDice;
-						res.locals.diceModifiers = equippedDice?.modifiers || [];
-						res.locals.is_admin =
-							res.locals.is_admin ??
-							['admin', 'god'].includes(res.locals.user_data?.[0]?.account_role);
-						next();
-					});
-				});
-			});
+		const modifiersByDie = new Map();
+		(modifierRows || []).forEach((row) => {
+			const formatted = formatModifierRow(row);
+			if (!isEssenceAffixModifier(formatted)) return;
+			const list = modifiersByDie.get(formatted.dice_instance_id) || [];
+			list.push(formatted);
+			modifiersByDie.set(formatted.dice_instance_id, list);
 		});
+
+		const socketsByDie = new Map();
+		(socketRows || []).forEach((row) => {
+			const formatted = formatSocketRow(row);
+			const list = socketsByDie.get(formatted.dice_instance_id) || [];
+			list.push(formatted);
+			socketsByDie.set(formatted.dice_instance_id, list);
+		});
+
+		const equippedDice =
+			equippedRow?.loot_id && equippedRow?.dice_instance_id
+				? formatEquippedDice(
+						equippedRow,
+						modifiersByDie.get(equippedRow.dice_instance_id) || [],
+						socketsByDie.get(equippedRow.dice_instance_id) || []
+					)
+				: null;
+
+		const diceInventory = (diceRows || []).map((row) =>
+			formatUserDiceInventoryRow(
+				row,
+				modifiersByDie.get(row.id) || [],
+				socketsByDie.get(row.id) || []
+			)
+		);
+
+		res.locals.inventory = [...diceInventory, ...(consumables || [])];
+		res.locals.equippedDice = equippedDice;
+		res.locals.diceModifiers = equippedDice?.modifiers || [];
+		res.locals.is_admin =
+			res.locals.is_admin ?? ['admin', 'god'].includes(res.locals.user_data?.[0]?.account_role);
+		next();
+	};
+
+	inventoryModel.selectInventoryById({ userId }, (error, results) => {
+		if (error) loadError = error;
+		consumables = results || [];
+		done();
+	});
+
+	userDiceModel.selectByUserId({ userId }, (error, results) => {
+		if (error) loadError = error;
+		diceRows = results || [];
+		done();
+	});
+
+	diceModifierModel.selectAllByUserId({ userId }, (error, results) => {
+		if (error) loadError = error;
+		modifierRows = results || [];
+		done();
+	});
+
+	diceSocketModel.selectAllByUserId({ userId }, (error, results) => {
+		if (error) loadError = error;
+		socketRows = results || [];
+		done();
+	});
+
+	diceGearModel.selectEquippedForUser({ userId }, (error, results) => {
+		if (error) loadError = error;
+		equippedRow = results?.[0] || null;
+		done();
 	});
 };
 
@@ -377,7 +390,7 @@ module.exports.grantAdminCraftingKit = (req, res, next) => {
 		}
 
 		function grantDiceTypes() {
-			lootModel.selectDiceLoot((diceLootError, diceRows) => {
+			lootModel.selectAdminGrantDiceLoot((diceLootError, diceRows) => {
 				if (diceLootError) {
 					console.error('Error loading dice loot:', diceLootError);
 					return res.status(500).json(diceLootError);
@@ -394,7 +407,7 @@ module.exports.grantAdminCraftingKit = (req, res, next) => {
 
 				function grantNextDie() {
 					if (grantIndex >= grants.length) {
-						res.locals.message = `Granted ${ADMIN_CRAFTING_MATERIAL_QUANTITY} of each crafting material and ${ADMIN_DICE_GRANT_COUNT} of each die type.`;
+						res.locals.message = `Granted ${ADMIN_CRAFTING_MATERIAL_QUANTITY} of each crafting material and ${ADMIN_DICE_GRANT_COUNT} of each die family (top tier).`;
 						return next();
 					}
 
@@ -402,14 +415,12 @@ module.exports.grantAdminCraftingKit = (req, res, next) => {
 					grantIndex += 1;
 					const playerLevel = Math.max(1, Number(res.locals.user_data?.[0]?.level) || 1);
 					const dropRarityScore = 8 + Math.floor(playerLevel * 0.85);
-					const instanceRarity = rollInstanceRarity(dropRarityScore);
 
 					userDiceModel.addUserDice(
 						{
 							userId,
 							lootId: row.id,
 							itemLevel: playerLevel,
-							instanceRarity,
 							dropRarityScore,
 						},
 						(addError) => {

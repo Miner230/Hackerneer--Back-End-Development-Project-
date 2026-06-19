@@ -37,6 +37,7 @@ function loadUserInfo(data) {
 	// Store username and level in localStorage
 	localStorage.setItem('username', user.username);
 	localStorage.setItem('level', user.level);
+	sessionStorage.setItem('currentUserId', String(user.id));
 
 	// Update navbar label
 	updateNavbarProfileLabel();

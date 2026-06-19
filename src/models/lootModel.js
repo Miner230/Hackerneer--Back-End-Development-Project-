@@ -40,9 +40,22 @@ module.exports.selectStackableLoot = (callback) => {
 
 module.exports.selectDiceLoot = (callback) => {
 	const SQLSTATMENT = `
-        SELECT id, name
+        SELECT id, name, rarity
         FROM loot
         WHERE mechanic = 'equip_dice';
+    `;
+	pool.query(SQLSTATMENT, callback);
+};
+
+module.exports.selectAdminGrantDiceLoot = (callback) => {
+	const SQLSTATMENT = `
+        SELECT id, name, rarity
+        FROM loot
+        WHERE mechanic = 'equip_dice'
+          AND (
+            (name = 'Basic Die' AND rarity = 'Common')
+            OR (name IN ('Crimson Die', 'Bone Die', 'Copper Die') AND rarity = 'Legendary')
+          );
     `;
 	pool.query(SQLSTATMENT, callback);
 };
@@ -71,7 +84,12 @@ module.exports.decrementQnt = (data, callback) => {
 
 module.exports.selectLootIdByName = (data, callback) => {
 	const SQLSTATMENT = `
-        SELECT id FROM loot WHERE name = ? LIMIT 1;
+        SELECT id FROM loot
+        WHERE name = ?
+        ${data.rarity ? 'AND rarity = ?' : ''}
+        ORDER BY id ASC
+        LIMIT 1;
     `;
-	pool.query(SQLSTATMENT, [data.name], callback);
+	const values = data.rarity ? [data.name, data.rarity] : [data.name];
+	pool.query(SQLSTATMENT, values, callback);
 };
