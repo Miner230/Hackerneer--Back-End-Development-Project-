@@ -91,7 +91,13 @@ module.exports.selectById = (data, callback) => {
             dice_gear.duplication_number,
             dice_gear.crit_chance,
             dice_gear.crit_power,
-            dice_gear.flat_damage AS base_flat_damage
+            dice_gear.flat_damage AS base_flat_damage,
+            (
+                SELECT COUNT(*)
+                FROM dice_socketed_items
+                WHERE dice_socketed_items.user_id = user_dice.user_id
+                  AND dice_socketed_items.dice_instance_id = user_dice.id
+            ) AS used_socket_count
         FROM user_dice
         INNER JOIN loot ON loot.id = user_dice.loot_id
         LEFT JOIN dice_gear ON dice_gear.loot_id = user_dice.loot_id

@@ -267,6 +267,10 @@ module.exports.removeReputation = (req, res, next) => {
 		if (results.affectedRows === 0) {
 			return res.status(404).json({ message: 'Not enough reputation to claim loot' });
 		}
+		const user = res.locals.user_data?.[0];
+		if (user) {
+			user.reputation = Math.max(0, Number(user.reputation || 0) - totalCost);
+		}
 		next();
 	};
 	model.removeRep(data, callback);

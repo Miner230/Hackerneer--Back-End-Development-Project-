@@ -124,17 +124,13 @@ function loadFormattedDiceInstance(userId, diceInstanceId, callback) {
 				return callback(null, null);
 			}
 
-			diceCraftService.loadModifiers(userId, diceInstanceId, (modifierError, modifiers) => {
-				if (modifierError) return callback(modifierError);
+			diceCraftService.loadModifiersAndSockets(userId, diceInstanceId, (loadError, { modifiers, sockets }) => {
+				if (loadError) return callback(loadError);
 
-				diceCraftService.loadSockets(userId, diceInstanceId, (socketError, sockets) => {
-					if (socketError) return callback(socketError);
-
-					callback(
-						null,
-						formatEquippedDice(buildDiceGearPayload(item, gear), modifiers, sockets)
-					);
-				});
+				callback(
+					null,
+					formatEquippedDice(buildDiceGearPayload(item, gear), modifiers, sockets)
+				);
 			});
 		});
 	});
@@ -149,14 +145,14 @@ function loadEquippedDice(userId, callback) {
 			return callback(null, null);
 		}
 
-		diceCraftService.loadModifiers(userId, equippedRow.dice_instance_id, (modifierError, modifiers) => {
-			if (modifierError) return callback(modifierError);
-
-			diceCraftService.loadSockets(userId, equippedRow.dice_instance_id, (socketError, sockets) => {
-				if (socketError) return callback(socketError);
+		diceCraftService.loadModifiersAndSockets(
+			userId,
+			equippedRow.dice_instance_id,
+			(modifierError, { modifiers, sockets }) => {
+				if (modifierError) return callback(modifierError);
 				callback(null, formatEquippedDice(equippedRow, modifiers, sockets));
-			});
-		});
+			}
+		);
 	});
 }
 
@@ -306,53 +302,28 @@ module.exports.equipDiceFromInventory = (req, res, next) => {
 		if (!item) {
 			return res.status(404).json({ message: 'Dice not found in inventory.' });
 		}
+		if (!item.image_key) {
+			return res.status(404).json({ message: 'Dice configuration not found.' });
+		}
 
-		diceGearModel.selectByLootId({ lootId: item.loot_id }, (gearError, gearRows) => {
-			if (gearError) {
-				console.error('Error loading dice gear:', gearError);
-				return res.status(500).json(gearError);
+		userModel.setEquippedDiceId({ userId, diceInstanceId }, (equipError) => {
+			if (equipError) {
+				console.error('Error saving equipped dice:', equipError);
+				return res.status(500).json(equipError);
 			}
 
-			const gear = gearRows[0];
-			if (!gear) {
-				return res.status(404).json({ message: 'Dice configuration not found.' });
+			if (res.locals.user_data?.[0]) {
+				res.locals.user_data[0].equipped_dice_id = diceInstanceId;
 			}
 
-			userModel.setEquippedDiceId({ userId, diceInstanceId }, (equipError) => {
-				if (equipError) {
-					console.error('Error saving equipped dice:', equipError);
-					return res.status(500).json(equipError);
+			diceCraftService.syncEquippedDiceStats(userId, res.locals.user_data, (syncError) => {
+				if (syncError) {
+					console.error('Error syncing equipped dice stats:', syncError);
+					return res.status(500).json(syncError);
 				}
 
-				diceCraftService.syncEquippedDiceStats(userId, (syncError) => {
-					if (syncError) {
-						console.error('Error syncing equipped dice stats:', syncError);
-						return res.status(500).json(syncError);
-					}
-
-					diceCraftService.loadModifiers(userId, diceInstanceId, (modifierError, modifiers) => {
-						if (modifierError) {
-							console.error('Error loading equipped dice modifiers:', modifierError);
-							return res.status(500).json(modifierError);
-						}
-
-						diceCraftService.loadSockets(userId, diceInstanceId, (socketError, sockets) => {
-							if (socketError) {
-								console.error('Error loading equipped dice sockets:', socketError);
-								return res.status(500).json(socketError);
-							}
-
-							res.locals.message = `Equipped ${item.name}.`;
-							res.locals.equippedDice = formatEquippedDice(
-								buildDiceGearPayload({ ...item, dice_instance_id: diceInstanceId }, gear),
-								modifiers,
-								sockets
-							);
-							res.locals.diceModifiers = modifiers;
-							next();
-						});
-					});
-				});
+				res.locals.message = `Equipped ${item.name}.`;
+				next();
 			});
 		});
 	});
@@ -456,6 +427,10 @@ module.exports.unequipDice = (req, res, next) => {
 			if (clearError) {
 				console.error('Error clearing equipped dice:', clearError);
 				return res.status(500).json(clearError);
+			}
+
+			if (res.locals.user_data?.[0]) {
+				res.locals.user_data[0].equipped_dice_id = null;
 			}
 
 			res.locals.message = 'Unequipped dice. Default dice restored.';

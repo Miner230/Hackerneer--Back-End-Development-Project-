@@ -50,7 +50,8 @@ module.exports.selectUserById = (data, callback) => {
 module.exports.selectUserByIdSecure = (data, callback) => {
 	const SQLSTATMENT = `
         SELECT id, username, account_role, level, experience, level_up_cost, loot_shard, number_of_delve_completed, reputation, rep_multi, voidstone_count,
-               player_flat_health, player_max_health_percent, damage_reduction_penetration, player_life_regen, player_speed_bonus
+               player_flat_health, player_max_health_percent, damage_reduction_penetration, player_life_regen, player_speed_bonus,
+               equipped_dice_id
         FROM user
         WHERE id = ?;
     `;
