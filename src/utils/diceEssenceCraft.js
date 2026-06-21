@@ -1,6 +1,12 @@
 const { DEFAULT_DICE_STATS } = require('../models/diceModel.js');
-const { computeGearFlatDamageRange } = require('./diceItemLevel.js');
+const { resolveGearFlatDamageRange } = require('./diceItemLevel.js');
 const { BASIC_DIE_BASELINE: RARITY_BASELINE } = require('./diceTierDefinitions.js');
+const {
+	modifierTierFromSourceRarity,
+	formatModifierTierLabel,
+	formatBetterModifierTierHint,
+	isModifierRollTierBetter,
+} = require('./modifierRollTiers.js');
 
 const MAX_PREFIXES = 3;
 const MAX_SUFFIXES = 3;
@@ -118,11 +124,18 @@ function formatEffectiveFlatDamageDisplay(stats) {
 	const min = scale(combined.min);
 	const max = scale(combined.max);
 
-	if (max <= 0) {
+	if (max <= 0 && percent <= 0) {
 		return null;
 	}
 
-	return `${formatFlatDamageRange(min, max)} per roll`;
+	const rangePart = max > 0 ? `${formatFlatDamageRange(min, max)} per roll` : '';
+	const percentPart = percent > 0 ? `+${percent}% increased flat damage` : '';
+
+	if (rangePart && percentPart) {
+		return `${rangePart} · ${percentPart}`;
+	}
+
+	return rangePart || percentPart || null;
 }
 
 const IMPLICIT_STAT_DEFS = [
@@ -297,6 +310,24 @@ function getModifierSuffix(mechanic) {
 	return getModifierDisplayName(mechanic);
 }
 
+const AFFIX_STAT_LABELS = {
+	crit_chance: 'Critical Chance',
+	crit_power: 'Critical Power',
+	duplication_chance: 'Duplication Chance',
+	duplication_number: 'Duplication Number',
+	dice_flat_damage_percent: 'Flat Damage %',
+	dice_flat_damage_roll: 'Flat Damage per Roll',
+	player_flat_health: 'Max Health',
+	player_max_health_percent: 'Max Health %',
+	damage_reduction_penetration: 'DR Penetration',
+	player_life_regen: 'Life Regen',
+	player_speed_bonus: 'Combat Speed',
+};
+
+function getAffixStatLabel(mechanic) {
+	return AFFIX_STAT_LABELS[mechanic] || String(mechanic || '').replace(/_/g, ' ');
+}
+
 function randomInt(min, max) {
 	const low = Math.min(min, max);
 	const high = Math.max(min, max);
@@ -363,20 +394,20 @@ function evaluateEssenceCraftAction(existingModifier, essence) {
 		return { action: 'insert' };
 	}
 
-	const existingTier = getRarityTier(existingModifier.source_rarity);
-	const newTier = getRarityTier(essence.rarity);
+	const existingRollTier = modifierTierFromSourceRarity(existingModifier.source_rarity);
+	const newRollTier = modifierTierFromSourceRarity(essence.rarity);
 
-	if (newTier === existingTier) {
+	if (newRollTier === existingRollTier) {
 		return {
 			action: 'reject',
-			message: `A ${essence.rarity} essence cannot reroll this modifier. Use a higher tier essence to upgrade it.`,
+			message: `${formatModifierTierLabel(newRollTier)} essence cannot reroll this ${formatModifierTierLabel(existingRollTier)} modifier. Use ${formatBetterModifierTierHint(existingRollTier)} to upgrade it.`,
 		};
 	}
 
-	if (newTier < existingTier) {
+	if (!isModifierRollTierBetter(newRollTier, existingRollTier)) {
 		return {
 			action: 'reject',
-			message: `This modifier was crafted with a higher tier essence. Use a higher tier essence to upgrade it.`,
+			message: `This modifier is ${formatModifierTierLabel(existingRollTier)}. Use ${formatBetterModifierTierHint(existingRollTier)} to upgrade it.`,
 		};
 	}
 
@@ -395,7 +426,7 @@ function buildBaseGearStats(gear) {
 	const source = gear || DEFAULT_DICE_STATS;
 	const itemLevel = Number(source.item_level ?? 1);
 	const baseFlatDamage = Number(source.base_flat_damage ?? source.flat_damage ?? 0);
-	const gearFlat = computeGearFlatDamageRange(baseFlatDamage, itemLevel);
+	const gearFlat = resolveGearFlatDamageRange(source);
 
 	return {
 		side_1: Number(source.side_1 ?? DEFAULT_DICE_STATS.side_1),
@@ -521,6 +552,8 @@ function formatModifierRow(row) {
 		source_loot_id: row.source_loot_id,
 		source_rarity: row.source_rarity,
 		source_name: row.source_name,
+		source_kind: row.source_kind || 'crafted',
+		roll_tier: modifierTierFromSourceRarity(row.source_rarity),
 	};
 }
 
@@ -534,6 +567,7 @@ module.exports = {
 	isEssenceAffixModifier,
 	getEssenceFamily,
 	getAffixType,
+	getAffixStatLabel,
 	getModifierDisplayName,
 	getModifierSuffix,
 	ESSENCE_STATLINE_MULTIPLIER,
@@ -541,6 +575,7 @@ module.exports = {
 	getModifierRollRange,
 	rollModifierValue,
 	getRarityTier,
+	normalizeRarityKey,
 	evaluateEssenceCraftAction,
 	MAX_FLAT_DAMAGE_PERCENT,
 	BASIC_DIE_BASELINE,

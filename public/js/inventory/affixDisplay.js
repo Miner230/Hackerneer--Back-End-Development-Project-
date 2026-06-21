@@ -160,11 +160,32 @@ function getAffixFlavorName(modifierOrMechanic) {
 }
 
 function getAffixRarityClass(sourceRarity) {
+	const rollTier =
+		typeof getModifierRollTier === 'function' ? getModifierRollTier(sourceRarity) : null;
+	if (rollTier != null) {
+		return `affix-row--tier-${getModifierTierCssKey(rollTier)}`;
+	}
+
 	const key = String(sourceRarity || 'Common').toLowerCase();
 	if (['common', 'uncommon', 'rare', 'epic', 'legendary'].includes(key)) {
 		return `affix-row--rarity-${key}`;
 	}
 	return 'affix-row--rarity-common';
+}
+
+function getAffixModifierTierClass(modifierOrTier) {
+	const rollTier =
+		typeof modifierOrTier === 'number'
+			? modifierOrTier
+			: typeof getModifierRollTierFromModifier === 'function'
+				? getModifierRollTierFromModifier(modifierOrTier)
+				: null;
+
+	if (rollTier == null) {
+		return getAffixRarityClass(modifierOrTier?.source_rarity);
+	}
+
+	return `affix-row--tier-${getModifierTierCssKey(rollTier)}`;
 }
 
 function formatAffixBadge(affixType) {
@@ -177,11 +198,35 @@ function formatAffixBadge(affixType) {
 	return '';
 }
 
-function formatTuplePanelListItem([label, value], extraClass = '') {
-	return `<li class="affix-row ${extraClass}">
+function formatTuplePanelListItem(row, extraClass = '') {
+	const affix = normalizeCraftedAffixRow(row);
+	if (!affix) return '';
+
+	const tierBadge =
+		affix.rollTier != null && typeof formatModifierTierBadge === 'function'
+			? formatModifierTierBadge(affix.rollTier)
+			: '';
+	const tierClass =
+		affix.rollTier != null ? getAffixModifierTierClass(affix.rollTier) : extraClass;
+
+	if (affix.source) {
+		const sourceClass =
+			affix.sourceKind === 'intrinsic' ? 'affix-flavor' : 'affix-source affix-source--essence';
+		return `<li class="affix-row affix-row--crafted ${tierClass || extraClass}">
+			<div class="affix-row-main">
+				${tierBadge}
+				<span class="affix-stat">${affix.stat}</span>
+				<span class="affix-value">${affix.value}</span>
+			</div>
+			<span class="${sourceClass}">${affix.source}</span>
+		</li>`;
+	}
+
+	return `<li class="affix-row ${tierClass || extraClass}">
 		<div class="affix-row-main">
-			<span class="affix-stat">${label}</span>
-			<span class="affix-value">${value}</span>
+			${tierBadge}
+			<span class="affix-stat">${affix.stat}</span>
+			<span class="affix-value">${affix.value}</span>
 		</div>
 	</li>`;
 }
@@ -228,15 +273,31 @@ function renderEffectiveStatListHtml(stats = [], emptyText = 'Equip a die to vie
 	return stats.map(formatEffectiveStatListItem).join('');
 }
 
+function getModifierAffixSourceLabel(modifier) {
+	if (modifier?.source_kind === 'crafted') {
+		return modifier.source_name || getAffixFlavorName(modifier);
+	}
+	return getAffixFlavorName(modifier);
+}
+
 function formatTooltipAffixListItem(modifier) {
 	const affixType = modifier.affix_type || getAffixTypeForMechanic(modifier.essence_mechanic);
-	const name = modifier.source_name || getAffixFlavorName(modifier);
+	const name = getModifierAffixSourceLabel(modifier);
 	const stat = getAffixStatLabel(modifier);
 	const valueText = formatModifierValueText(modifier);
-	const rarityClass = getAffixRarityClass(modifier.source_rarity);
+	const rollTier =
+		typeof getModifierRollTierFromModifier === 'function'
+			? getModifierRollTierFromModifier(modifier)
+			: null;
+	const tierBadge =
+		rollTier != null && typeof formatModifierTierBadge === 'function'
+			? formatModifierTierBadge(rollTier)
+			: '';
+	const tierClass = getAffixModifierTierClass(modifier);
 
-	return `<li class="affix-row affix-row--${affixType} ${rarityClass}">
+	return `<li class="affix-row affix-row--${affixType} ${tierClass}">
 		<div class="affix-row-main">
+			${tierBadge}
 			<span class="affix-stat">${name}</span>
 			<span class="affix-value">${valueText}</span>
 		</div>
@@ -256,10 +317,19 @@ function formatAffixListItem(modifier) {
 	const stat = getAffixStatLabel(modifier);
 	const flavor = getAffixFlavorName(modifier);
 	const valueText = formatModifierValueText(modifier);
-	const rarityClass = getAffixRarityClass(modifier.source_rarity);
+	const rollTier =
+		typeof getModifierRollTierFromModifier === 'function'
+			? getModifierRollTierFromModifier(modifier)
+			: null;
+	const tierBadge =
+		rollTier != null && typeof formatModifierTierBadge === 'function'
+			? formatModifierTierBadge(rollTier)
+			: '';
+	const tierClass = getAffixModifierTierClass(modifier);
 
-	return `<li class="affix-row affix-row--${affixType} ${rarityClass}">
+	return `<li class="affix-row affix-row--${affixType} ${tierClass}">
 		<div class="affix-row-main">
+			${tierBadge}
 			<span class="affix-stat">${stat}</span>
 			<span class="affix-value">${valueText}</span>
 		</div>
@@ -278,10 +348,19 @@ function formatSocketListItem(socket) {
 	const name = socket.source_name || 'Weighting Stone';
 	const value = Number(socket.rolled_value || 0);
 	const faceLabel = getAffixStatLabel(socket.mechanic);
-	const rarityClass = getAffixRarityClass(socket.source_rarity);
+	const rollTier =
+		typeof getModifierRollTierFromModifier === 'function'
+			? getModifierRollTierFromModifier(socket)
+			: null;
+	const tierBadge =
+		rollTier != null && typeof formatModifierTierBadge === 'function'
+			? formatModifierTierBadge(rollTier)
+			: '';
+	const tierClass = getAffixModifierTierClass(socket);
 
-	return `<li class="affix-row affix-row--socket ${rarityClass}">
+	return `<li class="affix-row affix-row--socket ${tierClass}">
 		<div class="affix-row-main">
+			${tierBadge}
 			<span class="affix-stat">${name}</span>
 			<span class="affix-value">+${value}</span>
 		</div>
@@ -302,6 +381,102 @@ function renderSocketListHtml(sockets = [], socketCount = 0, emptyText = 'No soc
 		: '';
 
 	return `${filled}${openHtml}`;
+}
+
+function inferAffixStatFromValue(value) {
+	const text = String(value || '');
+	if (text.includes('%')) return 'Flat Damage %';
+	if (/\+?\d+\s*[-–]\s*\d+/.test(text)) return 'Flat Damage per Roll';
+	return 'Bonus';
+}
+
+function normalizeCraftedAffixRow(row) {
+	if (!Array.isArray(row) || row.length < 2) return null;
+
+	if (row.length >= 5) {
+		const sourceKind = row[3] === 'i' ? 'intrinsic' : row[3] === 'c' ? 'crafted' : null;
+		return {
+			stat: row[0],
+			value: row[1],
+			source: row[2],
+			sourceKind,
+			rollTier: row[4] != null && row[4] !== '' ? Number(row[4]) : null,
+		};
+	}
+
+	if (row.length >= 3) {
+		const sourceKind = row[3] === 'i' ? 'intrinsic' : row[3] === 'c' ? 'crafted' : null;
+		return { stat: row[0], value: row[1], source: row[2], sourceKind, rollTier: null };
+	}
+
+	const [first, second] = row;
+	if (String(second).includes('%') || /\+?\d+\s*[-–]\s*\d+/.test(String(second))) {
+		return { stat: inferAffixStatFromValue(second), value: second, source: first, sourceKind: null, rollTier: null };
+	}
+
+	return { stat: first, value: second, source: null, sourceKind: null, rollTier: null };
+}
+
+function sumFlatDamagePercentFromAffixes(rows = []) {
+	return rows.reduce((sum, row) => {
+		const affix = normalizeCraftedAffixRow(row);
+		if (!affix || !String(affix.value).includes('%')) return sum;
+		if (affix.stat !== 'Flat Damage %' && affix.stat !== 'Increased Flat Damage %') return sum;
+		const match = String(affix.value).match(/\+?(\d+)%/);
+		return sum + (match ? Number(match[1]) : 0);
+	}, 0);
+}
+
+function formatCraftedAffixTooltipItem(row) {
+	const affix = normalizeCraftedAffixRow(row);
+	if (!affix) return '';
+
+	const tierBadge =
+		affix.rollTier != null && typeof formatModifierTierBadge === 'function'
+			? formatModifierTierBadge(affix.rollTier)
+			: '';
+	const sourceClass =
+		affix.sourceKind === 'intrinsic'
+			? 'tooltip-affix-flavor'
+			: 'tooltip-affix-source tooltip-affix-source--essence';
+	const sourceHtml = affix.source
+		? `<span class="${sourceClass}">${affix.source}</span>`
+		: '';
+
+	return `<li class="tooltip-affix-compact tooltip-affix-compact--crafted">
+		<div class="tooltip-affix-main">
+			${tierBadge}
+			<span class="tooltip-affix-stat">${affix.stat}</span>
+			<span class="tooltip-affix-value">${affix.value}</span>
+		</div>
+		${sourceHtml}
+	</li>`;
+}
+
+function renderCraftedAffixRowsHtml(rows = [], emptyText = 'None') {
+	if (!rows?.length) {
+		return `<li class="tooltip-affix-compact tooltip-affix-compact--empty">${emptyText}</li>`;
+	}
+	return rows.map(formatCraftedAffixTooltipItem).join('');
+}
+
+function renderCraftedAffixPanelHtml(label, rows) {
+	if (!rows?.length) return '';
+	return `<div class="tooltip-section-label">${label}</div><ul class="tooltip-affix-list">${renderCraftedAffixRowsHtml(rows)}</ul>`;
+}
+
+function formatEquippedFlatDamageDisplay(equippedDice) {
+	let flat = equippedDice?.flat || equippedDice?.flat_damage_display || '';
+	const fdp = Number(equippedDice?.fdp) || sumFlatDamagePercentFromAffixes(equippedDice?.pre);
+
+	if (fdp > 0 && flat && !flat.includes('%')) {
+		return `${flat} · +${fdp}% increased flat damage`;
+	}
+	if (fdp > 0 && !flat) {
+		return `+${fdp}% increased flat damage`;
+	}
+
+	return flat;
 }
 
 function renderTupleRowsHtml(rows = [], emptyText = 'None') {
@@ -335,36 +510,71 @@ function getItemTypeLabel(item) {
 	return 'Item';
 }
 
+function getDiceFlatDamagePerRollLine(item) {
+	const stats = item?.t;
+	if (stats) {
+		const gearMin = Number(stats.fdMin || 0);
+		const gearMax = Number(stats.fdMax || 0);
+		const edgeMin = Number(stats.fdRollMin || 0);
+		const edgeMax = Number(stats.fdRollMax || 0);
+		const min = gearMin + edgeMin;
+		const max = gearMax + edgeMax;
+
+		if (max > 0) {
+			const percent = Number(stats.fdPct ?? item?.fdp ?? 0);
+			const scale = (value) => Math.floor(Number(value || 0) * (1 + percent / 100));
+			return `+${scale(min)}-${scale(max)} per roll`;
+		}
+	}
+
+	const flat = String(item?.flat || item?.flat_damage_display || '').trim();
+	if (!flat) return '';
+
+	const primaryPart = flat.split('·')[0].trim();
+	if (/per roll/i.test(primaryPart)) {
+		return primaryPart;
+	}
+
+	if (flat.includes('%')) {
+		return '';
+	}
+
+	if (/^\+?\d+\s*[-–]\s*\d+/.test(primaryPart)) {
+		return `${primaryPart} per roll`;
+	}
+
+	return '';
+}
+
 function buildDiceTooltipHtml(item) {
 	const title = item.cn || item.crafted_name || item.n || item.name;
 	const socketCount = Math.max(0, Number(item.sc ?? item.socket_count) || 0);
 	const socketLine = `${socketCount} Socket${socketCount === 1 ? '' : 's'}`;
+	const flatPerRollLine = getDiceFlatDamagePerRollLine(item);
 	const skv = item.skv || [];
 	const imp = (item.imp || item.implicits || []).map((row) =>
 		Array.isArray(row) ? row : [row.label, row.display]
 	);
 	const pre = item.pre || [];
 	const suf = item.suf || [];
-	const flat = item.flat || item.flat_damage_display;
 
 	const skvHtml = skv.length
 		? `<ul class="tooltip-affix-list tooltip-socket-list">${renderTupleRowsHtml(skv)}</ul>`
 		: '';
-	const flatHtml = flat ? `<div class="tooltip-stat tooltip-stat--flat">${flat}</div>` : '';
 	const impHtml = imp.length
 		? `<ul class="tooltip-affix-list tooltip-implicit-list">${renderTupleRowsHtml(imp)}</ul>`
 		: '';
 
-	const affixBlock = `${renderTupleAffixPanelHtml('Prefixes', pre)}${renderTupleAffixPanelHtml('Suffixes', suf)}`;
+	const affixBlock = `${renderCraftedAffixPanelHtml('Prefixes', pre)}${renderCraftedAffixPanelHtml('Suffixes', suf)}`;
 	const divider = affixBlock ? '<div class="tooltip-divider" role="presentation"></div>' : '';
 	const loreHtml = item.lore ? `<div class="tooltip-lore">${item.lore}</div>` : '';
 	const rarity = item.r ?? item.rarity ?? 'Common';
 
 	return `
 		<div class="tooltip-title">${title}</div>
-		<div class="tooltip-stat">${socketLine}</div>
+		<div class="tooltip-dice-summary">${socketLine}</div>
+		${flatPerRollLine ? `<div class="tooltip-dice-summary tooltip-dice-summary--flat">${flatPerRollLine}</div>` : ''}
 		${skvHtml}
-		${flatHtml}
 		${impHtml}
 		${divider}
 		${affixBlock}
@@ -401,7 +611,8 @@ function renderTupleAffixListHtml(rows = [], emptyText = 'None') {
 
 function expandSocketTuple(tuple) {
 	if (!Array.isArray(tuple)) return tuple;
-	const [slot_index, source_loot_id, source_name, source_rarity, rolled_value, mechanic] = tuple;
+	const [slot_index, source_loot_id, source_name, source_rarity, rolled_value, mechanic, roll_tier] =
+		tuple;
 	return {
 		slot_index,
 		source_loot_id,
@@ -409,22 +620,50 @@ function expandSocketTuple(tuple) {
 		source_rarity,
 		rolled_value,
 		mechanic,
+		roll_tier,
 	};
+}
+
+function buildEmptySocketTooltip() {
+	const tip = document.createElement('div');
+	tip.className = 'tooltip-box';
+	tip.innerHTML = `
+		<div class="tooltip-title">Empty Socket</div>
+		<div class="tooltip-stat">Drop a socketable item here</div>
+	`;
+	return tip;
 }
 
 function buildSocketedItemTooltip(socket) {
 	const tip = document.createElement('div');
-	const rarity = `rarity-${(socket.source_rarity || 'common').toLowerCase()}`;
-	tip.className = `tooltip-box ${rarity}`;
+	const normalizedSocket =
+		typeof expandSocketTuple === 'function' ? expandSocketTuple(socket) : socket;
+	const rollTier =
+		typeof getModifierRollTierFromModifier === 'function'
+			? getModifierRollTierFromModifier(normalizedSocket)
+			: null;
+	const tierClass =
+		rollTier != null
+			? `tier-${getModifierTierCssKey(rollTier)}`
+			: `rarity-${(normalizedSocket?.source_rarity || 'common').toLowerCase()}`;
+	tip.className = `tooltip-box ${tierClass}`;
 
-	const name = socket.source_name || 'Weighting Stone';
-	const statLabel = getAffixStatLabel(socket.mechanic);
-	const value = Number(socket.rolled_value ?? socket.source_statline ?? 0);
+	const name = normalizedSocket?.source_name || 'Weighting Stone';
+	const faceLabel = getAffixStatLabel(normalizedSocket?.mechanic);
+	const value = Number(normalizedSocket?.rolled_value ?? normalizedSocket?.source_statline ?? 0);
+	const tierBadge =
+		rollTier != null && typeof formatModifierTierBadge === 'function'
+			? formatModifierTierBadge(rollTier)
+			: '';
+	const tierLabel =
+		rollTier != null && typeof formatModifierTierLabel === 'function'
+			? formatModifierTierLabel(rollTier)
+			: normalizedSocket?.source_rarity || 'Common';
 
 	tip.innerHTML = `
 		<div class="tooltip-title">${name}</div>
-		<div class="tooltip-stat">${statLabel} · +${value}</div>
-		<div class="tooltip-meta">${socket.source_rarity || 'Common'} · Weighting Stone</div>
+		<div class="tooltip-stat">${faceLabel} · +${value}</div>
+		<div class="tooltip-meta">${tierBadge}${tierLabel} · Weighting Stone</div>
 	`;
 
 	return tip;
@@ -446,7 +685,6 @@ window.getModifierRollRange = getModifierRollRange;
 window.formatRollRangeText = formatRollRangeText;
 window.formatFixedValueText = formatFixedValueText;
 window.buildInventoryTooltipHtml = buildInventoryTooltipHtml;
-window.buildSocketedItemTooltip = buildSocketedItemTooltip;
 window.isCraftableItem = isCraftableItem;
 window.isSocketableItem = isSocketableItem;
 window.getAffixMeta = getAffixMeta;
@@ -462,6 +700,10 @@ window.renderAffixListHtml = renderAffixListHtml;
 window.renderTooltipAffixListHtml = renderTooltipAffixListHtml;
 window.renderTupleAffixListHtml = renderTupleAffixListHtml;
 window.expandSocketTuple = expandSocketTuple;
+window.buildEmptySocketTooltip = buildEmptySocketTooltip;
+window.buildSocketedItemTooltip = buildSocketedItemTooltip;
+window.formatEquippedFlatDamageDisplay = formatEquippedFlatDamageDisplay;
+window.normalizeCraftedAffixRow = normalizeCraftedAffixRow;
 window.renderTuplePanelListHtml = renderTuplePanelListHtml;
 window.renderSocketListHtml = renderSocketListHtml;
 window.appendAffixBadgeToSlot = appendAffixBadgeToSlot;

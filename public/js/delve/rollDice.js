@@ -2,6 +2,8 @@ const diceCube = document.getElementById('diceCube');
 
 const combatLog = document.getElementById('delveCombatLog');
 
+const combatLogFlashLayer = document.getElementById('delveCombatFlashLayer');
+
 const rollBtn = document.querySelector('.dice-roll-btn.roll');
 
 const diceDock = document.querySelector('.dice-dock');
@@ -21,6 +23,7 @@ const FAST_ROLL_SPEED_MULTIPLIER = 2;
 const ROLL_DURATION_MS = DiceRollAnimator.ROLL_DURATION_MS;
 
 const ENEMY_TURN_COOLDOWN_MS = 1000;
+const COMBAT_LOG_FLASH_MS = 3100;
 const LOOT_DROP_STAGGER_MS = 100;
 const LOOT_BURST_ANIM_MS = 520;
 const END_OVERLAY_BASE_DELAY_MS = 1800;
@@ -31,6 +34,13 @@ const LOOT_ITEM_IMG_BASE =
 
 let isRolling = false;
 let isCombatBusy = false;
+let combatLogFlashQueue = Promise.resolve();
+let lastTurnPopupMessage = '';
+let isTurnPopupActive = false;
+let lastTurnStats = null;
+let skipActiveTurnPopup = null;
+let turnPopupSkipBound = false;
+let skipRollAnimations = false;
 
 let diceRollState = DiceRollAnimator.getInitialState();
 let currentRotation = DiceRollAnimator.getFaceRotation(1);
@@ -38,17 +48,45 @@ let currentRotation = DiceRollAnimator.getFaceRotation(1);
 
 
 function clearCombatLog() {
-
 	if (!combatLog) return;
 
 	combatLog.innerHTML = '';
 	clearMonsterLootDrops();
+
+	if (combatLogFlashLayer) {
+		combatLogFlashLayer.innerHTML = '';
+	}
+
+	combatLogFlashQueue = Promise.resolve();
 }
 
 
 
 function isCombatLogOpen() {
 	return combatLogSidebar?.classList.contains('is-open') ?? false;
+}
+
+function requestCombatAnimationSkip() {
+	if (typeof skipActiveTurnPopup === 'function') {
+		skipActiveTurnPopup();
+	}
+
+	if (isCombatBusy || isTurnPopupActive || isRolling) {
+		skipRollAnimations = true;
+	}
+
+	if (isRolling && DiceRollAnimator?.skipActiveRoll) {
+		DiceRollAnimator.skipActiveRoll();
+	}
+}
+
+function bindTurnPopupSkip() {
+	if (turnPopupSkipBound) return;
+	turnPopupSkipBound = true;
+
+	document.addEventListener('pointerdown', () => {
+		requestCombatAnimationSkip();
+	});
 }
 
 function scheduleCombatLogPeek(entry) {
@@ -63,6 +101,41 @@ function scheduleCombatLogPeek(entry) {
 		},
 		{ once: true }
 	);
+}
+
+function showCombatLogFlash(message, type = 'system') {
+	if (!combatLogFlashLayer || !message) {
+		return Promise.resolve();
+	}
+
+	return new Promise((resolve) => {
+		const flash = document.createElement('div');
+		flash.className = `combat-log-flash combat-log-${type}`;
+		flash.textContent = message;
+		combatLogFlashLayer.appendChild(flash);
+
+		let completed = false;
+		let timeoutId = null;
+		const finish = () => {
+			if (completed) return;
+			completed = true;
+			if (timeoutId) window.clearTimeout(timeoutId);
+			if (skipActiveTurnPopup === finish) {
+				skipActiveTurnPopup = null;
+			}
+			flash.remove();
+			resolve();
+		};
+
+		skipActiveTurnPopup = finish;
+		flash.addEventListener('animationend', finish, { once: true });
+		timeoutId = window.setTimeout(finish, COMBAT_LOG_FLASH_MS + 120);
+	});
+}
+
+function queueCombatLogFlash(message, type = 'system') {
+	combatLogFlashQueue = combatLogFlashQueue.then(() => showCombatLogFlash(message, type));
+	return combatLogFlashQueue;
 }
 
 function normalizeRarityKey(rarity) {
@@ -89,8 +162,9 @@ function flattenLootDrops(items) {
 }
 
 function clearMonsterLootDrops() {
-	const layer = document.getElementById('monsterLootLayer');
-	if (layer) layer.innerHTML = '';
+	document.querySelectorAll('.delve-enemy-loot-layer, #monsterLootLayer').forEach((layer) => {
+		layer.innerHTML = '';
+	});
 }
 
 function getLootDropMotionScale() {
@@ -101,9 +175,26 @@ function getLootDropMotionScale() {
 	return Number.isFinite(scale) && scale > 0 ? scale : 1;
 }
 
+function getMonsterLootDropImageSrc(item) {
+	const isEquipDice =
+		item?.mechanic === 'equip_dice' || item?.dice_instance_id != null;
+
+	if (isEquipDice) {
+		const imageKey = item.image_key || item.ik || 'dice1';
+		return `/assets/dice/${imageKey}.png`;
+	}
+
+	if (item?.id && typeof getLootImageSrc === 'function') {
+		return getLootImageSrc(item.id);
+	}
+
+	return item?.id ? `${LOOT_ITEM_IMG_BASE}${item.id}.png` : '';
+}
+
 function spawnMonsterLootDrop(item, index, total) {
-	const layer = document.getElementById('monsterLootLayer');
-	if (!layer || !item?.id) return;
+	const layers = document.querySelectorAll('.delve-enemy-loot-layer');
+	const layer = layers[index % Math.max(layers.length, 1)] || document.getElementById('monsterLootLayer');
+	if (!layer || (!item?.id && item?.dice_instance_id == null)) return;
 
 	const motionScale = getLootDropMotionScale();
 	const rarityKey = normalizeRarityKey(item.rarity);
@@ -111,11 +202,7 @@ function spawnMonsterLootDrop(item, index, total) {
 	drop.className = `monster-loot-drop monster-loot-drop--${rarityKey}`;
 
 	const img = document.createElement('img');
-	img.src = item.image_key
-		? `/assets/dice/${item.image_key}.png`
-		: typeof getLootImageSrc === 'function'
-			? getLootImageSrc(item.id)
-			: `${LOOT_ITEM_IMG_BASE}${item.id}.png`;
+	img.src = getMonsterLootDropImageSrc(item);
 	img.alt = item.name || 'Loot';
 	img.className = 'monster-loot-drop-img';
 	img.loading = 'eager';
@@ -179,13 +266,16 @@ function appendCombatLog(message, type = 'system') {
 
 
 
-function getCombatInstance(data) {
-
-	return data?.currentInstance || data;
-
+function formatTurnsBadge(remaining, speed) {
+	const total = Number(speed) || 0;
+	const left = Number(remaining);
+	if (!total || !Number.isFinite(left)) return 'TRN ?/?';
+	return `TRN ${left}/${total}`;
 }
 
-
+function getCombatInstance(data) {
+	return data?.currentInstance || data;
+}
 
 function getPlayerHealthBeforeMonsterTurn(stats, monsterTurn) {
 	if (!monsterTurn?.attacks?.length || !stats) {
@@ -227,7 +317,7 @@ function stripDuplicateRollDetails(summary) {
 
 function isGenericTurnMessage(message) {
 	if (!message) return true;
-	return /^(keep going!?|continue!?|your turn\.?)$/i.test(message.trim());
+	return /^(keep going!?|continue!?|your turn\.?|monster turn complete\. your turn!?)$/i.test(message.trim());
 }
 
 function logPlayerAttackOutcome(data) {
@@ -286,8 +376,10 @@ function logTurnSummary(data) {
 		}
 	}
 
+	let lootDropWait = Promise.resolve();
+
 	if (rewards?.type === 'loot_drop' && rewards.items?.length) {
-		logLootDrops(rewards.items);
+		lootDropWait = logLootDrops(rewards.items);
 	}
 
 	const xp = instance?.xp;
@@ -303,7 +395,7 @@ function logTurnSummary(data) {
 		appendCombatLog(xpMsg, 'success');
 	}
 
-	return Promise.resolve();
+	return lootDropWait;
 }
 
 function logRollOutcome(data) {
@@ -330,14 +422,16 @@ function lockDice() {
 
 function unlockDice(stats) {
 	isCombatBusy = false;
+	skipRollAnimations = false;
 	if (rollBtn) {
 		rollBtn.classList.remove('rolling');
 	}
 	updateTurnUI(stats);
 }
 
-function setTurnIndicator(text, phase = 'player') {
+function setTurnIndicator(text, phase = 'player', options = {}) {
 	if (!turnIndicator) return;
+	const { showPopup = true } = options;
 
 	turnIndicator.textContent = text;
 	turnIndicator.classList.remove(
@@ -347,13 +441,48 @@ function setTurnIndicator(text, phase = 'player') {
 		'turn-indicator--ended'
 	);
 	turnIndicator.classList.add(`turn-indicator--${phase}`);
+
+	if (!showPopup || !text || text === lastTurnPopupMessage) return Promise.resolve();
+	lastTurnPopupMessage = text;
+
+	const flashTypeByPhase = {
+		player: 'success',
+		enemy: 'player-damage',
+		waiting: 'info',
+		ended: 'system',
+	};
+	isTurnPopupActive = true;
+	const popupPromise = queueCombatLogFlash(text, flashTypeByPhase[phase] || 'system');
+	return popupPromise.finally(() => {
+		isTurnPopupActive = false;
+		applyRollButtonState(lastTurnStats);
+	});
 }
 
-function updateTurnUI(stats) {
+function updatePlayerTurnsBadge(stats) {
+	const playerTurns = document.getElementById('playerTurns');
+	if (!playerTurns || !stats) return;
+	playerTurns.textContent = formatTurnsBadge(stats.attacks_remaining, stats.player_speed);
+}
+
+function applyRollButtonState(stats) {
+	if (!rollBtn || !stats) return;
+	const canRoll =
+		stats.status !== 'completed' &&
+		stats.active_turn === 'player' &&
+		(stats.attacks_remaining ?? 0) > 0;
+
+	const blocked = !canRoll || isRolling || isCombatBusy || isTurnPopupActive;
+	rollBtn.disabled = blocked;
+	rollBtn.classList.toggle('disabled', blocked);
+	rollBtn.classList.toggle('rolling', isRolling || isCombatBusy);
+}
+
+function updateTurnUI(stats, options = {}) {
+	const { showPopup = false } = options;
 
 	if (!stats) return;
-
-
+	lastTurnStats = stats;
 
 	const canRoll =
 
@@ -366,12 +495,20 @@ function updateTurnUI(stats) {
 
 
 	if (stats.status === 'completed') {
-		setTurnIndicator('Battle ended', 'ended');
+		setTurnIndicator('Battle ended', 'ended', { showPopup });
 	} else if (stats.active_turn === 'player') {
-		setTurnIndicator(`Your turn — ${stats.attacks_remaining}/${stats.player_speed} attacks`, 'player');
+		const remaining = stats.attacks_remaining ?? 0;
+		const speed = stats.player_speed ?? remaining;
+		if (remaining > 0) {
+			setTurnIndicator(`Your turn — tap the dice (${remaining}/${speed} rolls left)`, 'player', { showPopup });
+		} else {
+			setTurnIndicator('Your turn', 'player', { showPopup });
+		}
 	} else {
-		setTurnIndicator(`Monster turn — SPD ${stats.monster_speed}`, 'enemy');
+		setTurnIndicator(`Monster turn — ${stats.monster_speed ?? '?'} rolls`, 'enemy', { showPopup });
 	}
+
+	updatePlayerTurnsBadge(stats);
 
 
 
@@ -381,13 +518,7 @@ function updateTurnUI(stats) {
 
 	}
 
-
-
-	if (rollBtn) {
-		rollBtn.disabled = !canRoll || isRolling || isCombatBusy;
-		rollBtn.classList.toggle('disabled', !canRoll || isRolling || isCombatBusy);
-		rollBtn.classList.toggle('rolling', isRolling || isCombatBusy);
-	}
+	applyRollButtonState(stats);
 
 }
 
@@ -412,6 +543,13 @@ function showFace(face, animate = false) {
 }
 
 async function rollSingleDie(face, speedMultiplier = 1) {
+	if (skipRollAnimations && DiceRollAnimator.snapToFace) {
+		const result = DiceRollAnimator.snapToFace(diceCube, face, diceRollState);
+		diceRollState = result.state;
+		currentRotation = { x: result.x, y: result.y };
+		return;
+	}
+
 	const result = await DiceRollAnimator.rollToFace(diceCube, face, diceRollState, {
 		speedMultiplier,
 	});
@@ -453,9 +591,17 @@ function setCombatLogOpen(isOpen) {
 			entry.classList.remove('combat-log-entry--peek');
 		});
 	}
+
+	if (combatLogFlashLayer) {
+		combatLogFlashLayer.innerHTML = '';
+	}
+
+	lastTurnPopupMessage = '';
 }
 
 function attachEventListeners() {
+	bindTurnPopupSkip();
+
 	if (rollBtn) rollBtn.addEventListener('click', triggerDelveAction);
 
 	if (toggleCombatLogBtn) {
@@ -504,6 +650,63 @@ function resolveRollCrit(attackEffects, rollIndex) {
 	return Boolean(attackEffects.isCrit);
 }
 
+function applyRollHitEffects(rollDamage, damageTarget, options = {}) {
+	const {
+		rollIndex = 0,
+		runningMonsterHealth = null,
+		runningPlayerHealth = null,
+		playerMaxHealth = null,
+		attackEffects = null,
+		targetEnemyId = null,
+	} = options;
+
+	const isRollCrit = resolveRollCrit(attackEffects, rollIndex);
+	const isDuplicateRoll = rollIndex > 0;
+
+	if (rollDamage > 0 && damageTarget) {
+		const monsterHpBeforeHit =
+			damageTarget === 'monster' &&
+			runningMonsterHealth !== null &&
+			runningMonsterHealth !== undefined
+				? runningMonsterHealth
+				: null;
+		const canShowHitEffects = damageTarget === 'player' ? true : monsterHpBeforeHit > 0;
+
+		showDamage(rollDamage, damageTarget, { isCrit: isRollCrit, enemyId: targetEnemyId });
+
+		let nextMonsterHealth = runningMonsterHealth;
+		let nextPlayerHealth = runningPlayerHealth;
+
+		if (damageTarget === 'monster' && monsterHpBeforeHit !== null) {
+			nextMonsterHealth = monsterHpBeforeHit - rollDamage;
+			updateMonsterHealthUI(nextMonsterHealth, targetEnemyId);
+		}
+
+		if (
+			damageTarget === 'player' &&
+			runningPlayerHealth !== null &&
+			runningPlayerHealth !== undefined
+		) {
+			nextPlayerHealth = Math.max(0, runningPlayerHealth - rollDamage);
+			updatePlayerHealthUI(nextPlayerHealth, playerMaxHealth);
+		}
+
+		if (attackEffects && canShowHitEffects) {
+			if (isRollCrit) showCritEffect();
+			if (isDuplicateRoll) showDuplicateEffect();
+		}
+
+		return { runningMonsterHealth: nextMonsterHealth, runningPlayerHealth: nextPlayerHealth };
+	}
+
+	if (attackEffects && isRollCrit) {
+		showCritEffect();
+		if (isDuplicateRoll) showDuplicateEffect();
+	}
+
+	return { runningMonsterHealth, runningPlayerHealth };
+}
+
 async function animateDiceRollSequence(rolls = [], options = {}) {
 	const {
 		enableRollAfter = true,
@@ -514,6 +717,7 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 		startingPlayerHealth = null,
 		playerMaxHealth = null,
 		attackEffects = null,
+		targetEnemyId = null,
 	} = options;
 
 
@@ -533,8 +737,7 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 		showFace(1);
 
 		if (showPrompt) {
-
-			appendCombatLog('Tap the dice to attack.', 'system');
+			setTurnIndicator('Your turn — tap the dice to roll.', 'player', { showPopup: true });
 
 		}
 
@@ -563,53 +766,35 @@ async function animateDiceRollSequence(rolls = [], options = {}) {
 		for (let i = 0; i < rolls.length; i++) {
 
 			const face = Math.min(6, Math.max(1, Number(rolls[i]) || 1));
+			const rollDamage = Array.isArray(rollDamages) ? rollDamages[i] : 0;
+
+			if (skipRollAnimations) {
+				const hitResult = applyRollHitEffects(rollDamage, damageTarget, {
+					rollIndex: i,
+					runningMonsterHealth,
+					runningPlayerHealth,
+					playerMaxHealth,
+					attackEffects,
+					targetEnemyId,
+				});
+				runningMonsterHealth = hitResult.runningMonsterHealth;
+				runningPlayerHealth = hitResult.runningPlayerHealth;
+				await rollSingleDie(face, speedMultiplier);
+				continue;
+			}
 
 			await rollSingleDie(face, speedMultiplier);
 
-			const rollDamage = Array.isArray(rollDamages) ? rollDamages[i] : 0;
-			const isRollCrit = resolveRollCrit(attackEffects, i);
-			const isDuplicateRoll = i > 0;
-
-			if (rollDamage > 0 && damageTarget) {
-				const monsterHpBeforeHit =
-					damageTarget === 'monster' &&
-					runningMonsterHealth !== null &&
-					runningMonsterHealth !== undefined
-						? runningMonsterHealth
-						: null;
-				const canShowHitEffects =
-					damageTarget === 'player' ? true : monsterHpBeforeHit > 0;
-
-				showDamage(rollDamage, damageTarget, { isCrit: isRollCrit });
-
-				if (damageTarget === 'monster' && monsterHpBeforeHit !== null) {
-					runningMonsterHealth -= rollDamage;
-					updateMonsterHealthUI(runningMonsterHealth);
-				}
-
-				if (
-					damageTarget === 'player' &&
-					runningPlayerHealth !== null &&
-					runningPlayerHealth !== undefined
-				) {
-					runningPlayerHealth = Math.max(0, runningPlayerHealth - rollDamage);
-					updatePlayerHealthUI(runningPlayerHealth, playerMaxHealth);
-				}
-
-				if (attackEffects && canShowHitEffects) {
-					if (isRollCrit) {
-						showCritEffect();
-					}
-					if (isDuplicateRoll) {
-						showDuplicateEffect();
-					}
-				}
-			} else if (attackEffects && isRollCrit) {
-				showCritEffect();
-				if (isDuplicateRoll) {
-					showDuplicateEffect();
-				}
-			}
+			const hitResult = applyRollHitEffects(rollDamage, damageTarget, {
+				rollIndex: i,
+				runningMonsterHealth,
+				runningPlayerHealth,
+				playerMaxHealth,
+				attackEffects,
+				targetEnemyId,
+			});
+			runningMonsterHealth = hitResult.runningMonsterHealth;
+			runningPlayerHealth = hitResult.runningPlayerHealth;
 
 			if (i < rolls.length - 1) await delay(rollPauseMs);
 
@@ -638,7 +823,7 @@ async function animateMonsterTurn(monsterTurn, stats, startingPlayerHealth) {
 	lockDice();
 
 	if (diceDock) diceDock.classList.add('dice-dock--enemy-turn');
-	setTurnIndicator('Monster attacks...', 'enemy');
+	setTurnIndicator('Monster turn...', 'enemy', { showPopup: false });
 
 	let runningPlayerHealth = startingPlayerHealth;
 
@@ -666,9 +851,11 @@ async function animateMonsterTurn(monsterTurn, stats, startingPlayerHealth) {
 		if (stats) {
 			updatePlayerUI(getStatsForMonsterAttackPhase(stats, runningPlayerHealth));
 		}
-		setTurnIndicator('Monster attacks...', 'enemy');
+		setTurnIndicator('Monster turn...', 'enemy', { showPopup: false });
 
-		await delay(350);
+		if (!skipRollAnimations) {
+			await delay(350);
+		}
 	}
 
 	if (diceDock) diceDock.classList.remove('dice-dock--enemy-turn');
@@ -682,10 +869,12 @@ function handleDelveActionResponse(status, data) {
 
 	const raw = instance?.raw || data?.raw;
 
-
-
-	if (status !== 200 || !raw?.baseRolls) {
-		appendCombatLog('Failed to load or parse dice data.', 'fail');
+	if (status !== 200 || !Array.isArray(raw?.baseRolls)) {
+		const serverMessage =
+			data?.message ||
+			instance?.message ||
+			(status === 0 ? 'Network error — could not reach the server.' : null);
+		appendCombatLog(serverMessage || 'Combat action failed.', 'fail');
 		unlockDice();
 		return;
 	}
@@ -703,9 +892,15 @@ function handleDelveActionResponse(status, data) {
 
 	(async () => {
 		try {
+			const targetEnemyId =
+				stats?.target_enemy_id || DelveEnemyBoard?.getSelectedTargetEnemyId?.() || null;
+			const targetEnemy = stats?.enemies?.find(
+				(enemy) => String(enemy.id) === String(targetEnemyId)
+			);
 			const monsterHealthBefore = resolveMonsterHealthBeforeAttack(stats, raw);
-			const postHealth = Math.max(0, stats?.health ?? 0);
-			const totalMonsterDamage = Math.max(0, monsterHealthBefore - postHealth);
+			const totalMonsterDamage =
+				Number(raw?.playerDamageToMonster) ||
+				Math.max(0, monsterHealthBefore - (targetEnemy?.health ?? stats?.health ?? 0));
 			const rollDamages = splitDamageAcrossRolls(rolls, totalMonsterDamage);
 
 			await animateDiceRollSequence(rolls, {
@@ -713,14 +908,19 @@ function handleDelveActionResponse(status, data) {
 				rollDamages,
 				damageTarget: 'monster',
 				startingMonsterHealth: monsterHealthBefore,
+				targetEnemyId,
 				attackEffects: {
 					critPerRoll: raw?.critPerRoll,
 					isCrit: Boolean(raw?.isCrit),
 				},
 			});
 
-			if (stats?.health !== undefined) {
-				updateMonsterHealthUI(stats.health);
+			if (stats?.enemies?.length) {
+				DelveEnemyBoard?.syncEnemyBoardFromStats?.(stats);
+			} else if (targetEnemyId && targetEnemy?.health !== undefined) {
+				updateMonsterHealthUI(targetEnemy.health, targetEnemyId);
+			} else if (stats?.health !== undefined) {
+				updateMonsterHealthUI(stats.health, targetEnemyId);
 			}
 
 			const playerPhaseStats = getStatsForPlayerAttackPhase(stats, monsterTurn);
@@ -731,8 +931,7 @@ function handleDelveActionResponse(status, data) {
 			logPlayerAttackOutcome(data);
 
 			if (monsterTurn?.attacks?.length) {
-				setTurnIndicator("Monster's turn incoming...", 'waiting');
-				await delay(ENEMY_TURN_COOLDOWN_MS);
+				await setTurnIndicator('Monster turn...', 'enemy', { showPopup: true });
 				await animateMonsterTurn(monsterTurn, stats, playerHealthBeforeMonster);
 				logMonsterTurnOutcome(monsterTurn, monsterAttack);
 			}
@@ -745,6 +944,7 @@ function handleDelveActionResponse(status, data) {
 				if (typeof syncMonsterStatsFromDelve === 'function') {
 					syncMonsterStatsFromDelve(stats);
 				}
+				updateTurnUI(stats, { showPopup: true });
 			}
 
 			const lootDropWait = logTurnSummary(data);
@@ -797,13 +997,17 @@ function triggerDelveAction() {
 	}
 
 	lockDice();
-	fetchMethod(`${currentUrl}/api/delve/${delveId}/action`, handleDelveActionResponse, 'PUT', null, token);
+	const rawTargetId = DelveEnemyBoard?.getSelectedTargetEnemyId?.();
+	const targetEnemyId =
+		rawTargetId != null && String(rawTargetId).length > 0 ? rawTargetId : null;
+	const payload = targetEnemyId != null ? { targetEnemyId } : null;
+	fetchMethod(`${currentUrl}/api/delve/${delveId}/action`, handleDelveActionResponse, 'PUT', payload, token);
 }
 
 
 
 function showDamage(damageAmount, target = 'monster', options = {}) {
-	const { isCrit = false } = options;
+	const { isCrit = false, enemyId = null } = options;
 
 	if (target === 'player') {
 
@@ -861,9 +1065,11 @@ function showDamage(damageAmount, target = 'monster', options = {}) {
 
 
 
-	const container = document.querySelector('#primaryMonster .monster-display');
-
-	const monsterImg = document.getElementById('monsterImage');
+	const targetId = enemyId || DelveEnemyBoard?.getSelectedTargetEnemyId?.();
+	const container =
+		(targetId && DelveEnemyBoard?.getEnemyDisplayElement?.(targetId)) ||
+		document.querySelector('.delve-enemy-card .monster-display');
+	const monsterImg = container?.querySelector('.delve-enemy-img, .monster-img');
 
 	if (!container || !monsterImg) return;
 
@@ -900,35 +1106,35 @@ function showDamage(damageAmount, target = 'monster', options = {}) {
 
 
 function setNextDelveButtonText(outcome) {
-
 	const messageEl = document.getElementById('delveEndMessage');
-
 	const nextBtn = document.getElementById('startNextDelveBtn');
-
 	if (!messageEl) return;
 
+	sessionStorage.setItem('delveLastOutcome', outcome || 'default');
 
+	const fromDungeonMap =
+		typeof DungeonRunApi !== 'undefined' && DungeonRunApi.hasPendingDungeonRoom();
 
 	if (outcome === 'win') {
-
-		messageEl.textContent = 'Victory! Continue to Next Delve';
-
-		if (nextBtn) nextBtn.textContent = 'Start Next Delve';
-
+		if (fromDungeonMap) {
+			messageEl.textContent = 'Room cleared!';
+			if (nextBtn) nextBtn.textContent = 'Return to Map';
+		} else {
+			messageEl.textContent = 'Victory! Continue to Next Delve';
+			if (nextBtn) nextBtn.textContent = 'Start Next Delve';
+		}
 	} else if (outcome === 'lose') {
-
-		messageEl.textContent = 'Defeated... Try Again?';
-
-		if (nextBtn) nextBtn.textContent = 'Try Again';
-
+		if (fromDungeonMap) {
+			messageEl.textContent = 'Defeated…';
+			if (nextBtn) nextBtn.textContent = 'Return to Map';
+		} else {
+			messageEl.textContent = 'Defeated... Try Again?';
+			if (nextBtn) nextBtn.textContent = 'Try Again';
+		}
 	} else {
-
 		messageEl.textContent = 'Delve Complete';
-
-		if (nextBtn) nextBtn.textContent = 'Start Next Delve';
-
+		if (nextBtn) nextBtn.textContent = fromDungeonMap ? 'Return to Map' : 'Start Next Delve';
 	}
-
 }
 
 
@@ -956,11 +1162,9 @@ function showDuplicateEffect() {
 }
 
 function playMonsterDeathAnimation() {
-
-	const monsterImg = document.getElementById('monsterImage');
-
-	if (monsterImg) monsterImg.classList.add('monster-death');
-
+	document.querySelectorAll('.delve-enemy-img').forEach((monsterImg) => {
+		monsterImg.classList.add('monster-death');
+	});
 }
 
 

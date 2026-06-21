@@ -77,7 +77,7 @@ function buildMonsterStatRows(stats) {
 		{ label: 'Health', value: formatMonsterHealthLine(stats) },
 		{ label: 'Damage reduction', value: `${stats.damage_reduction ?? 0}%` },
 		{ label: 'Life regen', value: `${stats.life_regen ?? 0} / turn` },
-		{ label: 'Attack speed', value: `${stats.monster_speed ?? '?'} attacks / turn` },
+		{ label: 'Turn speed', value: `${stats.monster_speed ?? '?'} rolls / round` },
 		{ label: 'Loot quantity', value: `${stats.item_quantity ?? '?'} drop(s)` },
 		{ label: 'Loot rarity', value: stats.item_rarity ?? '?' },
 		{ label: 'Roll attempts', value: stats.roll_attempt ?? '?' },
@@ -275,6 +275,51 @@ function syncMonsterStatsFromDelve(delve) {
 	});
 }
 
+function buildMonsterStatsSnapshotFromEnemy(enemy) {
+	const delveId = sessionStorage.getItem('delveID');
+	const startKey = delveId ? `enemyStartHealth_${delveId}_${enemy.id}` : null;
+	const storedStart = startKey ? parseInt(sessionStorage.getItem(startKey), 10) : NaN;
+
+	return {
+		enemy_id: enemy.id,
+		monster_id: enemy.monster_id,
+		monster_name: enemy.monster_name,
+		monster_description: enemy.monster_description,
+		level: enemy.level,
+		health: enemy.health,
+		start_health: Number.isFinite(storedStart) && storedStart > 0 ? storedStart : enemy.max_health || enemy.health,
+		life_regen: enemy.life_regen,
+		damage_reduction: enemy.damage_reduction,
+		monster_speed: enemy.monster_speed,
+		item_quantity: enemy.item_quantity,
+		item_rarity: enemy.item_rarity,
+		roll_attempt: enemy.roll_attempt,
+		status: enemy.status,
+		modifiers: Array.isArray(enemy.modifiers) ? enemy.modifiers : [],
+	};
+}
+
+function registerMonsterStatsEnemies(enemies = []) {
+	if (!enemies.length) return;
+
+	const selectedId =
+		typeof DelveEnemyBoard !== 'undefined'
+			? DelveEnemyBoard.getSelectedTargetEnemyId()
+			: enemies[0]?.id;
+	const selected =
+		enemies.find((enemy) => String(enemy.id) === String(selectedId)) || enemies[0];
+	setMonsterStats(buildMonsterStatsSnapshotFromEnemy(selected));
+}
+
+function openMonsterStatsForEnemy(enemyId) {
+	if (typeof DelveEnemyBoard === 'undefined') return;
+	const enemy = DelveEnemyBoard.getEnemyById(enemyId);
+	if (!enemy) return;
+
+	setMonsterStats(buildMonsterStatsSnapshotFromEnemy(enemy));
+	openMonsterStatsSheet();
+}
+
 function buildMonsterStatsSnapshot(delve, monsterImageId, monsterName, monsterDesc, currentHealth) {
 	return {
 		monster_id: monsterImageId,
@@ -295,36 +340,8 @@ function buildMonsterStatsSnapshot(delve, monsterImageId, monsterName, monsterDe
 }
 
 function initMonsterStatsSheet() {
-	const target = document.querySelector('#primaryMonster .monster-display');
 	const sheet = document.getElementById('monsterStatsSheet');
-	if (!target || !sheet) return;
-
-	target.classList.add('monster-inspect-target');
-	target.setAttribute('role', 'button');
-	target.setAttribute('tabindex', '0');
-	target.setAttribute('aria-label', 'Inspect monster stats');
-	target.setAttribute('title', 'Click or right-click for detailed stats');
-
-	const openFromClick = (event) => {
-		if (event.target.closest('.monster-loot-drop')) return;
-		if (!activeMonsterStats) return;
-		toggleMonsterStatsSheet();
-	};
-
-	target.addEventListener('click', (event) => {
-		if (event.button !== 0) return;
-		openFromClick(event);
-	});
-	target.addEventListener('contextmenu', (event) => {
-		event.preventDefault();
-		openFromClick(event);
-	});
-	target.addEventListener('keydown', (event) => {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			toggleMonsterStatsSheet();
-		}
-	});
+	if (!sheet) return;
 
 	sheet.querySelectorAll('[data-close-stats]').forEach((el) => {
 		el.addEventListener('click', closeMonsterStatsSheet);
@@ -334,5 +351,9 @@ function initMonsterStatsSheet() {
 		if (event.key === 'Escape' && isMonsterStatsOpen) closeMonsterStatsSheet();
 	});
 }
+
+window.registerMonsterStatsEnemies = registerMonsterStatsEnemies;
+window.openMonsterStatsForEnemy = openMonsterStatsForEnemy;
+window.buildMonsterStatsSnapshotFromEnemy = buildMonsterStatsSnapshotFromEnemy;
 
 document.addEventListener('DOMContentLoaded', initMonsterStatsSheet);

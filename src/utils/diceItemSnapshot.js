@@ -7,6 +7,9 @@ const {
 	getAffixStatLabel,
 	formatCraftedModifierDisplay,
 } = require('./diceEssenceCraft.js');
+const { getModifierAffixSublabel } = require('./diceModifierLabels.js');
+const { modifierTierFromSourceRarity } = require('./modifierRollTiers.js');
+const { resolveGearFlatDamageRange } = require('./diceItemLevel.js');
 
 function parseStatsSnapshot(raw) {
 	if (!raw) return null;
@@ -20,6 +23,7 @@ function parseStatsSnapshot(raw) {
 
 function buildDiceItemSnapshot(dieRow, modifiers = [], sockets = []) {
 	const essenceMods = modifiers.filter(isEssenceAffixModifier);
+	const gearFlat = resolveGearFlatDamageRange(dieRow);
 	const effectiveStats = computeEffectiveDiceStats(dieRow, essenceMods, sockets);
 	const flat = formatEffectiveFlatDamageDisplay(effectiveStats);
 
@@ -35,8 +39,16 @@ function buildDiceItemSnapshot(dieRow, modifiers = [], sockets = []) {
 	const pre = [];
 	const suf = [];
 	essenceMods.forEach((modifier) => {
-		const name = modifier.source_name || modifier.modifier_name;
-		const row = [name, formatCraftedModifierDisplay(modifier)];
+		const sublabel = getModifierAffixSublabel(modifier);
+		const sourceKind = modifier.source_kind === 'intrinsic' ? 'i' : 'c';
+		const rollTier = modifierTierFromSourceRarity(modifier.source_rarity);
+		const row = [
+			getAffixStatLabel(modifier.essence_mechanic),
+			formatCraftedModifierDisplay(modifier),
+			sublabel,
+			sourceKind,
+			rollTier,
+		];
 		if (modifier.affix_type === 'prefix') pre.push(row);
 		else suf.push(row);
 	});
@@ -48,11 +60,13 @@ function buildDiceItemSnapshot(dieRow, modifiers = [], sockets = []) {
 		socket.source_rarity || 'Common',
 		Number(socket.rolled_value) || 0,
 		socket.mechanic,
+		modifierTierFromSourceRarity(socket.source_rarity),
 	]);
 
 	return {
 		cn: buildCraftedDiceName(dieRow.name, essenceMods),
 		flat: flat || null,
+		gf: { min: gearFlat.min, max: gearFlat.max },
 		imp,
 		skv,
 		pre,
@@ -84,6 +98,7 @@ function snapshotForApi(snapshot) {
 	return {
 		cn: snapshot.cn,
 		flat: snapshot.flat,
+		fdp: Number(snapshot.t?.fdPct) || 0,
 		imp: snapshot.imp || [],
 		skv: snapshot.skv || [],
 		pre: snapshot.pre || [],
@@ -126,7 +141,7 @@ function formatCompactDiceItem(row, snapshotOverride = null) {
 		q: 1,
 		m: 'equip_dice',
 		n: row.name,
-		r: row.rarity || 'Common',
+		r: row.instance_rarity || row.rarity || 'Common',
 		ik: row.image_key || null,
 		il: Number(row.item_level) || 1,
 		sc: Number(row.socket_count) || 0,

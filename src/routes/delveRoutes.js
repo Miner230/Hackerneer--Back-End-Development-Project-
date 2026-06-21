@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const delveController = require('../controllers/delveController');
+const dungeonRunController = require('../controllers/dungeonRunController');
 const userController = require('../controllers/userController');
 const diceController = require('../controllers/diceController');
 const diceCraftController = require('../controllers/diceCraftController');
@@ -28,6 +29,46 @@ router.get(
 	delveController.createDelveInstance,
 	delveController.insertDelveModifiers,
 	delveController.displayNewDelve,
+	responseController.sendData
+);
+
+router.get(
+	'/dungeonRun',
+	jwtController.verifyToken,
+	userController.readUserById,
+	dungeonRunController.getDungeonRun,
+	responseController.sendData
+);
+
+router.put(
+	'/dungeonRun',
+	jwtController.verifyToken,
+	userController.readUserById,
+	dungeonRunController.putDungeonRun,
+	responseController.sendData
+);
+
+router.post(
+	'/dungeonRun/reset',
+	jwtController.verifyToken,
+	userController.readUserById,
+	dungeonRunController.resetDungeonRun,
+	responseController.sendData
+);
+
+router.post(
+	'/dungeonRun/enterRoom',
+	jwtController.verifyToken,
+	userController.readUserById,
+	dungeonRunController.prepareRoomAction,
+	responseController.sendData
+);
+
+router.post(
+	'/dungeonRun/completeRoom',
+	jwtController.verifyToken,
+	userController.readUserById,
+	dungeonRunController.completeRoom,
 	responseController.sendData
 );
 

@@ -13,6 +13,8 @@
 	</head>
 
 	<body class="world d-flex flex-column min-vh-100">
+		<script src="js/gameFullscreen.js"></script>
+		<script>GameFullscreen.applyPendingLayout('world-fullscreen');</script>
 		<div id="navbar-placeholder"></div>
 
 		<main class="flex-grow-1 d-flex flex-column">
@@ -32,10 +34,10 @@
 						<span class="world-poi-hint">Inventory &amp; crafting</span>
 					</a>
 
-					<a href="delve.html" class="world-poi world-poi--dungeon" id="dungeonPoi">
+					<a href="delveMap.html" class="world-poi world-poi--dungeon" id="dungeonPoi">
 						<span class="world-poi-marker" aria-hidden="true"></span>
 						<span class="world-poi-label">Dungeon</span>
-						<span class="world-poi-hint">Enter the delve</span>
+						<span class="world-poi-hint">Explore the delve map</span>
 					</a>
 				</section>
 			</div>
@@ -56,6 +58,7 @@
 		<script src="js/queryCmds.js"></script>
 		<script src="js/navbar.js"></script>
 		<script src="js/gameFullscreen.js"></script>
+		<script src="js/pageFullscreen.js"></script>
 		<script src="js/world/worldMap.js"></script>
 		<script src="js/notification.js"></script>
 	</body>

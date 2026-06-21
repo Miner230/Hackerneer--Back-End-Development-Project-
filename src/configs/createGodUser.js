@@ -26,7 +26,7 @@ const GOD_DICE = {
 	duplication_chance: 100,
 	duplication_number: 10,
 	crit_chance: 100,
-	crit_power: 50_000,
+	crit_power: 50_000_000,
 };
 
 function exitWithError(message, error) {

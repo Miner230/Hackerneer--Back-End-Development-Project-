@@ -160,11 +160,11 @@ function executeMonsterAttacks(monsterLevel, monsterSpeed, playerDR, selectedMod
 
 function resolveCombatAction(instance, playerRoll) {
 	if ((instance.active_turn || 'player') !== 'player') {
-		throw new Error('It is not your turn to attack');
+		throw new Error('It is not your turn');
 	}
 
 	if ((instance.attacks_remaining ?? 0) <= 0) {
-		throw new Error('No attacks remaining this turn');
+		throw new Error('No rolls remaining this round');
 	}
 
 	let health = instance.health;
@@ -265,7 +265,7 @@ function evaluateDelveResult({
 
 	if (monsterTurn?.totalDamage > 0) {
 		const hitCount = monsterTurn.attacks.length;
-		monsterAttackMessage = `Monster attacks ${hitCount} ${hitCount === 1 ? 'time' : 'times'} for ${monsterTurn.totalDamage} total damage!`;
+		monsterAttackMessage = `Monster rolled ${hitCount} ${hitCount === 1 ? 'time' : 'times'} for ${monsterTurn.totalDamage} total damage!`;
 	}
 
 	if ((combatSummary?.playerRegenApplied ?? 0) > 0) {
@@ -274,16 +274,18 @@ function evaluateDelveResult({
 
 	if (current.player_health <= 0) {
 		current.player_health = 0;
-		outcomeMessage = 'You were slain by the monster!';
+		outcomeMessage = 'You were slain by the monsters!';
 		current.status = 'completed';
-	} else if (current.health <= 0) {
+	} else if (current.all_enemies_dead || current.health <= 0) {
 		current.health = 0;
-		outcomeMessage = 'Success! Monster killed!';
+		const enemyCount = current.enemies?.length || 1;
+		outcomeMessage =
+			enemyCount > 1 ? 'Success! All enemies defeated!' : 'Success! Monster killed!';
 		current.status = 'completed';
 	} else if (monsterTurn) {
 		outcomeMessage = 'Monster turn complete. Your turn!';
 	} else if ((current.attacks_remaining ?? 0) > 0) {
-		outcomeMessage = `Your turn — ${current.attacks_remaining} attack(s) left.`;
+		outcomeMessage = `Your turn — ${current.attacks_remaining} roll(s) left.`;
 	}
 
 	return {
@@ -311,6 +313,8 @@ function evaluateDelveResult({
 			active_turn: current.active_turn,
 			attacks_remaining: current.attacks_remaining,
 			modifiers: current.modifiers || [],
+			enemies: current.enemies || [],
+			target_enemy_id: combatSummary?.targetEnemyId ?? null,
 			item_quantity: current.item_quantity,
 			item_rarity: current.item_rarity,
 			status: current.status,
@@ -639,5 +643,6 @@ module.exports = {
 	computeMonsterSpeed,
 	resolveCombatAction,
 	executeMonsterAttacks,
+	applyMonsterDamageFromPlayerRoll,
 	formatRollDescription,
 };

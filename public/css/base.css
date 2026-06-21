@@ -30,6 +30,21 @@ body {
 	flex-direction: column;
 }
 
+/* Native Fullscreen API — keep scrollable content inside fullscreen */
+html:fullscreen,
+html:-webkit-full-screen,
+html:-moz-full-screen,
+html:-ms-fullscreen {
+	overflow: auto !important;
+}
+
+body:fullscreen,
+body:-webkit-full-screen,
+body:-moz-full-screen,
+body:-ms-fullscreen {
+	overflow: auto !important;
+}
+
 .card,
 .bounty-card,
 .navbar,

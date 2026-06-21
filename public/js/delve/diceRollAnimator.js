@@ -138,6 +138,8 @@
 		cubeElement.style.transform = buildTransform(x, y);
 	}
 
+	let activeRollFinish = null;
+
 	function rollToFace(cubeElement, gameFace, state, options = {}) {
 		const speedMultiplier = Math.max(1, Number(options.speedMultiplier) || 1);
 		const durationMs = ROLL_DURATION_MS / speedMultiplier;
@@ -149,7 +151,16 @@
 				return;
 			}
 
+			let completed = false;
+			let timeoutId = null;
+
 			const finishRoll = () => {
+				if (completed) return;
+				completed = true;
+				if (activeRollFinish === finishRoll) {
+					activeRollFinish = null;
+				}
+				if (timeoutId) window.clearTimeout(timeoutId);
 				cubeElement.removeEventListener('transitionend', onEnd);
 				cubeElement.classList.remove('is-rolling');
 				cubeElement.style.transitionDuration = '';
@@ -162,12 +173,35 @@
 				finishRoll();
 			};
 
+			activeRollFinish = finishRoll;
 			cubeElement.style.transitionDuration = `${durationMs}ms`;
 			cubeElement.addEventListener('transitionend', onEnd);
 			applyRotation(cubeElement, x, y, true);
 
-			window.setTimeout(finishRoll, durationMs + 150 / speedMultiplier);
+			timeoutId = window.setTimeout(finishRoll, durationMs + 150 / speedMultiplier);
 		});
+	}
+
+	function snapToFace(cubeElement, gameFace, state) {
+		const face = clampFace(gameFace);
+		const { x, y } = getFaceRotation(face);
+		applyRotation(cubeElement, x, y, false);
+		return {
+			x,
+			y,
+			state: {
+				...state,
+				lastNumber: face,
+				lastXRotation: x,
+				lastYRotation: y,
+			},
+		};
+	}
+
+	function skipActiveRoll() {
+		if (typeof activeRollFinish === 'function') {
+			activeRollFinish();
+		}
 	}
 
 	window.DiceRollAnimator = {
@@ -176,5 +210,7 @@
 		getFaceRotation,
 		applyRotation,
 		rollToFace,
+		snapToFace,
+		skipActiveRoll,
 	};
 })();

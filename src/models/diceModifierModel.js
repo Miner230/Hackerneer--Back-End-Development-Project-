@@ -46,8 +46,8 @@ module.exports.selectByFamily = (data, callback) => {
 module.exports.insertModifier = (data, callback) => {
 	const SQLSTATMENT = `
         INSERT INTO dice_modifiers
-            (user_id, dice_instance_id, affix_type, slot_index, essence_mechanic, essence_family, modifier_name, rolled_value, source_loot_id, source_rarity)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            (user_id, dice_instance_id, affix_type, slot_index, essence_mechanic, essence_family, modifier_name, rolled_value, source_loot_id, source_rarity, source_kind)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 	const VALUES = [
 		data.userId,
@@ -60,6 +60,7 @@ module.exports.insertModifier = (data, callback) => {
 		data.rolledValue,
 		data.sourceLootId,
 		data.sourceRarity,
+		data.sourceKind || 'crafted',
 	];
 	pool.query(SQLSTATMENT, VALUES, callback);
 };

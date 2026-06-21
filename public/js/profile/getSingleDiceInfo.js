@@ -48,7 +48,18 @@ function loadDiceInfo(data) {
 	const modifierRows = modifiers
 		.map((modifier) => {
 			const valueText = formatProfileModifierValue(modifier);
-			return `<li class="list-group-item d-flex justify-content-between ${modifier.affix_type === 'prefix' ? 'text-primary' : 'text-warning'}">${modifier.modifier_name}<span>${valueText}</span></li>`;
+			const rollTier =
+				modifier.roll_tier != null
+					? Number(modifier.roll_tier)
+					: typeof getModifierRollTier === 'function'
+						? getModifierRollTier(modifier.source_rarity)
+						: null;
+			const tierLabel =
+				rollTier != null && typeof formatModifierTierLabel === 'function'
+					? formatModifierTierLabel(rollTier)
+					: '';
+			const tierSuffix = tierLabel ? ` <span class="text-muted">${tierLabel}</span>` : '';
+			return `<li class="list-group-item d-flex justify-content-between ${modifier.affix_type === 'prefix' ? 'text-primary' : 'text-warning'}">${modifier.modifier_name}${tierSuffix}<span>${valueText}</span></li>`;
 		})
 		.join('');
 

@@ -3,6 +3,7 @@ const userDiceModel = require('../models/userDiceModel.js');
 const diceModifierModel = require('../models/diceModifierModel.js');
 const diceSocketModel = require('../models/diceSocketModel.js');
 const userModel = require('../models/userModel.js');
+const lootModel = require('../models/lootModel.js');
 const {
 	computeEffectiveDiceStats,
 	computePlayerBonusesFromModifiers,
@@ -13,6 +14,7 @@ const {
 	buildDiceItemSnapshot,
 	snapshotTotalsForDiceTable,
 } = require('../utils/diceItemSnapshot.js');
+const { getDiceRarityForModifierCount, resolveDiceLootId } = require('../utils/diceDropModifiers.js');
 const { formatSocketRow } = require('../utils/diceSockets.js');
 
 function parseOptionalUserData(userDataOrCallback, maybeCallback) {
@@ -94,6 +96,48 @@ function loadModifiersAndSockets(userId, diceInstanceId, callback) {
 	});
 }
 
+function syncDiceRarityFromModifiers(userId, dieRow, modifiers, callback) {
+	if (!dieRow?.id) return callback(null, dieRow);
+
+	const modifierCount = (modifiers || []).filter(isEssenceAffixModifier).length;
+	const targetRarity = getDiceRarityForModifierCount(modifierCount);
+	const familyName = dieRow.name;
+
+	const finish = (lootId) => {
+		const nextLootId = lootId || dieRow.loot_id;
+		const rarityUnchanged =
+			targetRarity === dieRow.instance_rarity && nextLootId === dieRow.loot_id;
+
+		if (rarityUnchanged) {
+			return callback(null, dieRow);
+		}
+
+		userDiceModel.updateInstanceTier(
+			{
+				userId,
+				diceInstanceId: dieRow.id,
+				instanceRarity: targetRarity,
+				lootId: nextLootId,
+			},
+			(updateError) => {
+				if (updateError) return callback(updateError);
+
+				userDiceModel.selectById({ userId, diceInstanceId: dieRow.id }, (selectError, rows) => {
+					if (selectError) return callback(selectError);
+					callback(null, rows[0] || { ...dieRow, instance_rarity: targetRarity, loot_id: nextLootId });
+				});
+			}
+		);
+	};
+
+	lootModel.selectDiceLootRowsByFamily({ familyName }, (lootError, familyRows) => {
+			if (lootError) return callback(lootError);
+
+			const lootId = resolveDiceLootId(familyRows || [], familyName, targetRarity);
+			finish(lootId);
+		});
+}
+
 function rebuildAndPersistDiceSnapshot(userId, diceInstanceId, callback) {
 	userDiceModel.selectById({ userId, diceInstanceId }, (diceError, diceRows) => {
 		if (diceError) return callback(diceError);
@@ -104,14 +148,18 @@ function rebuildAndPersistDiceSnapshot(userId, diceInstanceId, callback) {
 		loadModifiersAndSockets(userId, diceInstanceId, (loadError, { modifiers, sockets }) => {
 			if (loadError) return callback(loadError);
 
-			const snapshot = buildDiceItemSnapshot(dieRow, modifiers, sockets);
-			userDiceModel.updateStatsSnapshot(
-				{ userId, diceInstanceId, snapshot },
-				(updateError) => {
-					if (updateError) return callback(updateError);
-					callback(null, snapshot);
-				}
-			);
+			syncDiceRarityFromModifiers(userId, dieRow, modifiers, (syncError, updatedDieRow) => {
+				if (syncError) return callback(syncError);
+
+				const snapshot = buildDiceItemSnapshot(updatedDieRow, modifiers, sockets);
+				userDiceModel.updateStatsSnapshot(
+					{ userId, diceInstanceId, snapshot },
+					(updateError) => {
+						if (updateError) return callback(updateError);
+						callback(null, snapshot);
+					}
+				);
+			});
 		});
 	});
 }
@@ -169,7 +217,7 @@ function persistDiceSnapshotAndSync(userId, diceInstanceId, userData, callback) 
 
 		resolveEquippedDiceId(userId, userData, (equippedError, equippedDiceId) => {
 			if (equippedError) return callback(equippedError);
-			if (equippedDiceId !== diceInstanceId) return callback(null, snapshot);
+			if (Number(equippedDiceId) !== Number(diceInstanceId)) return callback(null, snapshot);
 
 			const totals = snapshotTotalsForDiceTable(snapshot);
 			if (!totals) return callback(null, snapshot);
@@ -228,12 +276,50 @@ function syncDiceStatsIfEquipped(userId, diceInstanceId, userDataOrCallback, may
 	});
 }
 
+function applyDropModifiers(userId, diceInstanceId, modifiers, callback) {
+	if (!modifiers?.length) {
+		return rebuildAndPersistDiceSnapshot(userId, diceInstanceId, callback);
+	}
+
+	let index = 0;
+
+	const insertNext = (error) => {
+		if (error) return callback(error);
+		if (index >= modifiers.length) {
+			return rebuildAndPersistDiceSnapshot(userId, diceInstanceId, callback);
+		}
+
+		const modifier = modifiers[index];
+		index += 1;
+
+			diceModifierModel.insertModifier(
+			{
+				userId,
+				diceInstanceId,
+				affixType: modifier.affixType,
+				slotIndex: modifier.slotIndex,
+				essenceMechanic: modifier.essenceMechanic,
+				essenceFamily: modifier.essenceFamily,
+				modifierName: modifier.modifierName,
+				rolledValue: modifier.rolledValue,
+				sourceLootId: modifier.sourceLootId,
+				sourceRarity: modifier.sourceRarity,
+				sourceKind: 'intrinsic',
+			},
+			insertNext
+		);
+	};
+
+	insertNext();
+}
+
 module.exports = {
 	loadEquippedDiceInstanceId,
 	loadModifiers,
 	loadSockets,
 	loadModifiersAndSockets,
 	rebuildAndPersistDiceSnapshot,
+	applyDropModifiers,
 	persistDiceSnapshotAndSync,
 	syncDiceInstanceStatsFromData,
 	syncDiceInstanceStats,

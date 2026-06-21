@@ -76,6 +76,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			localStorage.removeItem('token');
 			localStorage.removeItem('username');
 			localStorage.removeItem('level');
+			if (window.GameFullscreen?.clearPersistentMode) {
+				GameFullscreen.clearPersistentMode();
+			}
 			updateNavbarProfileLabel();
 			window.location.href = 'login.html';
 		}

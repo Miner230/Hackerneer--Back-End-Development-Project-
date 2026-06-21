@@ -4,12 +4,13 @@ const { rollDiceSocketCount } = require('../utils/diceSockets.js');
 
 module.exports.addUserDice = (data, callback) => {
 	const SQLSTATMENT = `
-        INSERT INTO user_dice (user_id, loot_id, item_level, socket_count, drop_rarity_score)
-        VALUES (?, ?, ?, ?, ?);
+        INSERT INTO user_dice (user_id, loot_id, item_level, socket_count, instance_rarity, drop_rarity_score)
+        VALUES (?, ?, ?, ?, ?, ?);
     `;
 	const socketCount = Number.isFinite(data.socketCount)
 		? Math.max(0, Math.min(6, data.socketCount))
 		: rollDiceSocketCount();
+	const instanceRarity = data.instanceRarity || 'Common';
 	pool.query(
 		SQLSTATMENT,
 		[
@@ -17,6 +18,7 @@ module.exports.addUserDice = (data, callback) => {
 			data.lootId,
 			Math.max(1, Number(data.itemLevel) || 1),
 			socketCount,
+			instanceRarity,
 			Math.max(0, Number(data.dropRarityScore) || 100),
 		],
 		callback
@@ -31,6 +33,7 @@ module.exports.selectByUserId = (data, callback) => {
             user_dice.loot_id,
             user_dice.item_level,
             user_dice.socket_count,
+            user_dice.instance_rarity,
             user_dice.drop_rarity_score,
             user_dice.stats_snapshot,
             user_dice.created_at,
@@ -71,6 +74,7 @@ module.exports.selectById = (data, callback) => {
             user_dice.loot_id,
             user_dice.item_level,
             user_dice.socket_count,
+            user_dice.instance_rarity,
             user_dice.drop_rarity_score,
             user_dice.stats_snapshot,
             user_dice.created_at,
@@ -116,6 +120,19 @@ module.exports.updateStatsSnapshot = (data, callback) => {
     `;
 	const payload = typeof data.snapshot === 'string' ? data.snapshot : JSON.stringify(data.snapshot);
 	pool.query(SQLSTATMENT, [payload, data.diceInstanceId, data.userId], callback);
+};
+
+module.exports.updateInstanceTier = (data, callback) => {
+	const SQLSTATMENT = `
+        UPDATE user_dice
+        SET instance_rarity = ?, loot_id = ?
+        WHERE id = ? AND user_id = ?;
+    `;
+	pool.query(
+		SQLSTATMENT,
+		[data.instanceRarity, data.lootId, data.diceInstanceId, data.userId],
+		callback
+	);
 };
 
 module.exports.deleteById = (data, callback) => {

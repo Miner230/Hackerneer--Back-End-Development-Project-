@@ -47,6 +47,7 @@ module.exports.grantStarterDice = (req, res, next) => {
 				userId,
 				lootId,
 				itemLevel: 1,
+				instanceRarity: 'Common',
 				dropRarityScore: 8,
 				socketCount: 1,
 			},
@@ -115,24 +116,18 @@ module.exports.readDiceByUserId = (req, res, next) => {
 	model.selectDiceByUserId(data, callback);
 };
 
-// Perform a dice roll for the user
+// Perform a dice roll for the user (uses dice row loaded by readDiceByUserId)
 module.exports.rollDice = (req, res, next) => {
-	const data = { id: req.params.userId };
+	const row = res.locals.rows;
+	if (!row) {
+		return res.status(400).json({ message: 'Dice data missing from row' });
+	}
 
-	const callback = () => {
-		const row = res.locals.rows; // Must be set by readDiceByUserId
-		if (!row) {
-			return res.status(400).json({ message: 'Dice data missing from row' });
-		}
+	const rolled = diceRoll(row);
+	if (!rolled) {
+		return res.status(500).json({ message: 'Dice roll failed' });
+	}
 
-		const rolled = diceRoll(row);
-		if (!rolled) {
-			return res.status(500).json({ message: 'Dice roll failed' });
-		}
-
-		Object.assign(res.locals, rolled);
-		next();
-	};
-
-	model.selectDiceByUserId(data, callback);
+	Object.assign(res.locals, rolled);
+	next();
 };

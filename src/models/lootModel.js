@@ -93,3 +93,21 @@ module.exports.selectLootIdByName = (data, callback) => {
 	const values = data.rarity ? [data.name, data.rarity] : [data.name];
 	pool.query(SQLSTATMENT, values, callback);
 };
+
+module.exports.selectDiceLootIdByFamilyAndRarity = (data, callback) => {
+	const SQLSTATMENT = `
+        SELECT id FROM loot
+        WHERE mechanic = 'equip_dice' AND name = ? AND rarity = ?
+        LIMIT 1;
+    `;
+	pool.query(SQLSTATMENT, [data.familyName, data.rarity], callback);
+};
+
+module.exports.selectDiceLootRowsByFamily = (data, callback) => {
+	const SQLSTATMENT = `
+        SELECT id, name, rarity, mechanic
+        FROM loot
+        WHERE mechanic = 'equip_dice' AND name = ?;
+    `;
+	pool.query(SQLSTATMENT, [data.familyName], callback);
+};

@@ -13,14 +13,22 @@
 		<link href="css/orientation.css" rel="stylesheet" />
 	</head>
 
-	<body class="inventory d-flex flex-column">
-		<!-- Navbar -->
+	<body class="inventory d-flex flex-column min-vh-100">
+		<script src="js/gameFullscreen.js"></script>
+		<script>GameFullscreen.applyPendingLayout('inventory-fullscreen');</script>
 		<div id="navbar-placeholder"></div>
 
-		<!-- Main Content -->
-		<main class="inventory-main flex-grow-1 d-flex flex-column">
-			<div class="inventory-arena">
-				<div class="inventory-layout">
+		<main class="flex-grow-1 d-flex flex-column">
+			<div id="inventoryArena" class="inventory-arena">
+				<header class="inventory-hud">
+					<button type="button" class="inventory-back-btn" id="exitInventoryBtn" aria-label="Back to world map">
+						← World
+					</button>
+					<h1 class="inventory-hud-title">Smithy</h1>
+				</header>
+
+				<div class="inventory-body">
+					<div class="inventory-layout">
 					<section class="inventory-craft-column">
 						<header class="inventory-panel-header">
 							<h4 class="inventory-panel-title mb-0">Dice Crafting</h4>
@@ -79,37 +87,37 @@
 							</div>
 						</div>
 					</section>
-				</div>
-			</div>
-			<!-- Use Item Overlay Modal -->
-			<div id="useItemOverlay" class="overlay d-none">
-				<div class="overlay-content paper-box">
-					<h5 id="useItemTitle">Use Item</h5>
-					<p id="useItemDesc" class="mb-3"></p>
-					<div class="d-flex justify-content-end">
-						<button id="confirmUseBtn" class="btn btn-danger me-2">Use</button>
-						<button id="cancelUseBtn" class="btn btn-secondary">Cancel</button>
 					</div>
 				</div>
-			</div>
-			<!-- Equip Dice Overlay Modal -->
-			<div id="equipDiceOverlay" class="overlay d-none">
-				<div class="overlay-content paper-box">
-					<h5 id="equipDiceTitle">Equip Dice</h5>
-					<p id="equipDiceDesc" class="mb-3"></p>
-					<div class="d-flex justify-content-end">
-						<button id="confirmEquipBtn" class="btn btn-warning me-2">Equip</button>
-						<button id="cancelEquipBtn" class="btn btn-secondary">Cancel</button>
+
+				<div id="useItemOverlay" class="overlay d-none">
+					<div class="overlay-content paper-box">
+						<h5 id="useItemTitle">Use Item</h5>
+						<p id="useItemDesc" class="mb-3"></p>
+						<div class="d-flex justify-content-end">
+							<button id="confirmUseBtn" class="btn btn-danger me-2">Use</button>
+							<button id="cancelUseBtn" class="btn btn-secondary">Cancel</button>
+						</div>
 					</div>
 				</div>
-			</div>
-			<div id="claimOverlay" class="claimOverlay d-none">
-				<div class="claim-overlay-content paper-box">
-					<h5>Claimed Items</h5>
-					<div id="claimMessage" class="text-danger fw-bold mb-2" style="display: none"></div>
-					<div id="claimedItemGrid" class="inventory-grid"></div>
-					<div class="d-flex justify-content-end mt-3">
-						<button id="closeClaimOverlayBtn" class="btn btn-secondary">Close</button>
+				<div id="equipDiceOverlay" class="overlay d-none">
+					<div class="overlay-content paper-box">
+						<h5 id="equipDiceTitle">Equip Dice</h5>
+						<p id="equipDiceDesc" class="mb-3"></p>
+						<div class="d-flex justify-content-end">
+							<button id="confirmEquipBtn" class="btn btn-warning me-2">Equip</button>
+							<button id="cancelEquipBtn" class="btn btn-secondary">Cancel</button>
+						</div>
+					</div>
+				</div>
+				<div id="claimOverlay" class="claimOverlay d-none">
+					<div class="claim-overlay-content paper-box">
+						<h5>Claimed Items</h5>
+						<div id="claimMessage" class="text-danger fw-bold mb-2" style="display: none"></div>
+						<div id="claimedItemGrid" class="inventory-grid"></div>
+						<div class="d-flex justify-content-end mt-3">
+							<button id="closeClaimOverlayBtn" class="btn btn-secondary">Close</button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -132,9 +140,13 @@
 		<script src="js/orientationLock.js"></script>
 		<script src="js/queryCmds.js"></script>
 		<script src="js/navbar.js"></script>
+		<script src="js/gameFullscreen.js"></script>
+		<script src="js/pageFullscreen.js"></script>
+		<script src="js/inventory/inventoryPage.js"></script>
 		<script src="js/notification.js"></script>
 		<script src="js/mainUtils.js"></script>
 		<script src="js/lootImages.js"></script>
+		<script src="js/inventory/modifierRollTiers.js"></script>
 		<script src="js/inventory/affixDisplay.js"></script>
 		<script src="js/inventory/getUserInventory.js"></script>
 		<script src="js/inventory/diceCraft.js"></script>

@@ -13,6 +13,8 @@ let activeInventoryTab = 'all';
 let inventoryReloadTimer = null;
 let inventoryRequestInFlight = false;
 let pendingInventoryForceReload = false;
+let currentEquippedDiceId = null;
+const tooltipOriginalHosts = new WeakMap();
 
 function registerInventoryTabs() {
 	const savedTab = localStorage.getItem(INVENTORY_TAB_STORAGE_KEY);
@@ -41,6 +43,20 @@ function isDiceItem(item) {
 
 function getDiceInstanceId(item) {
 	return item?.id ?? item?.dice_instance_id;
+}
+
+function getEquippedDiceInstanceId(equippedDice) {
+	return equippedDice?.id ?? equippedDice?.dice_instance_id ?? null;
+}
+
+function syncEquippedDiceIdFromResponse(data) {
+	if (!data || !Object.prototype.hasOwnProperty.call(data, 'equippedDice')) return;
+	currentEquippedDiceId = getEquippedDiceInstanceId(data.equippedDice);
+}
+
+function isEquippedInventoryItem(item) {
+	if (!isDiceItem(item) || currentEquippedDiceId == null) return false;
+	return Number(getDiceInstanceId(item)) === Number(currentEquippedDiceId);
 }
 
 function getItemLootId(item) {
@@ -196,12 +212,27 @@ function mergeInventoryPatch(inventory, patch) {
 
 function applyInventoryResponse(data) {
 	if (!data) return false;
+	syncEquippedDiceIdFromResponse(data);
 
 	let applied = false;
 
 	if (data.inventoryPatch) {
 		cachedInventory = mergeInventoryPatch(cachedInventory, data.inventoryPatch);
 		renderInventoryItems(cachedInventory);
+
+		if (
+			!Object.prototype.hasOwnProperty.call(data, 'equippedDice') &&
+			window.lastEquippedDiceId &&
+			typeof syncCraftingPanelFromResponse === 'function'
+		) {
+			const patchedEquipped = data.inventoryPatch.dice?.find(
+				(die) => Number(die.id ?? die.dice_instance_id) === Number(window.lastEquippedDiceId)
+			);
+			if (patchedEquipped) {
+				syncCraftingPanelFromResponse({ equippedDice: patchedEquipped });
+			}
+		}
+
 		applied = true;
 	} else if (Array.isArray(data.inventory)) {
 		cachedInventory = data.inventory;
@@ -231,8 +262,7 @@ function registerInventoryOverlayEvents() {
 
 // Bind hover and click events for inventory slots
 function bindInventoryEvents(slot, tooltip, item) {
-	slot.addEventListener('mouseenter', () => showTooltip(tooltip, slot));
-	slot.addEventListener('mouseleave', () => hideTooltip(tooltip));
+	bindHoverTooltip(slot, tooltip);
 	slot.addEventListener('click', () => {
 		if (isDiceItem(item)) {
 			openEquipOverlay(item);
@@ -260,6 +290,7 @@ function renderInventoryGrid(status, data) {
 	const grid = document.getElementById('inventoryGrid');
 
 	syncAdminGrantButton(Boolean(data?.is_admin));
+	syncEquippedDiceIdFromResponse(data);
 
 	if (typeof renderEquippedDicePanel === 'function') {
 		renderEquippedDicePanel(status === 200 ? data?.equippedDice || null : null);
@@ -289,7 +320,7 @@ function renderInventoryItems(inventory) {
 	grid.innerHTML = '';
 	const order = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
 	const filtered = filterInventoryByTab(
-		inventory.filter((i) => getItemQuantity(i) > 0),
+		inventory.filter((i) => getItemQuantity(i) > 0 && !isEquippedInventoryItem(i)),
 		activeInventoryTab
 	);
 
@@ -369,13 +400,37 @@ function buildTooltip(item, rarity) {
 	return tip;
 }
 
+function mountTooltipOnBody(tip) {
+	if (!tip || tip.parentElement === document.body) return;
+	if (!tooltipOriginalHosts.has(tip)) {
+		tooltipOriginalHosts.set(tip, tip.parentElement);
+	}
+	document.body.appendChild(tip);
+}
+
+function restoreTooltipHost(tip) {
+	const host = tooltipOriginalHosts.get(tip);
+	if (host && tip?.parentElement === document.body) {
+		host.appendChild(tip);
+	}
+}
+
+function bindHoverTooltip(slot, tooltip) {
+	if (!slot || !tooltip) return;
+
+	slot.addEventListener('mouseenter', () => showTooltip(tooltip, slot));
+	slot.addEventListener('mouseleave', () => hideTooltip(tooltip));
+}
+
 // Position tooltip within the viewport
 function showTooltip(tip, slot) {
-	if (window.innerWidth <= 768) return;
+	if (window.innerWidth <= 768 || !tip || !slot) return;
 
 	const margin = 10;
 	const gap = 8;
 	const slotRect = slot.getBoundingClientRect();
+
+	mountTooltipOnBody(tip);
 
 	tip.style.display = 'block';
 	tip.style.visibility = 'hidden';
@@ -384,6 +439,7 @@ function showTooltip(tip, slot) {
 	tip.style.top = '0';
 	tip.style.right = 'auto';
 	tip.style.bottom = 'auto';
+	tip.style.zIndex = '11000';
 	tip.style.maxHeight = `${window.innerHeight - margin * 2}px`;
 	tip.style.overflowY = 'auto';
 
@@ -414,16 +470,18 @@ function showTooltip(tip, slot) {
 
 // Hide tooltip
 function hideTooltip(tip) {
-	if (window.innerWidth <= 768) return;
+	if (window.innerWidth <= 768 || !tip) return;
 	tip.style.position = '';
 	tip.style.left = '';
 	tip.style.right = '';
 	tip.style.top = '';
 	tip.style.bottom = '';
+	tip.style.zIndex = '';
 	tip.style.maxHeight = '';
 	tip.style.overflowY = '';
 	tip.style.visibility = '';
-	tip.style.display = '';
+	tip.style.display = 'none';
+	restoreTooltipHost(tip);
 }
 
 // Open overlay for item use confirmation
@@ -461,5 +519,6 @@ function useItemCallback(item) {
 
 window.showInventoryTooltip = showTooltip;
 window.hideInventoryTooltip = hideTooltip;
+window.bindHoverTooltip = bindHoverTooltip;
 window.applyInventoryResponse = applyInventoryResponse;
 window.loadInventoryData = loadInventoryData;

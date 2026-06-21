@@ -16,10 +16,12 @@
 	</head>
 
 	<body class="delve d-flex flex-column min-vh-100">
+		<script src="js/gameFullscreen.js"></script>
+		<script>GameFullscreen.applyPendingLayout('delve-fullscreen');</script>
 		<!-- Navbar -->
 		<div id="navbar-placeholder"></div>
 
-		<main class="flex-grow-1 d-flex flex-column">
+		<main id="delvePlayArena" class="flex-grow-1 d-flex flex-column">
 			<div id="delveStartOverlay" class="delve-start-overlay d-flex">
 				<div class="delve-start-box text-center position-relative">
 					<a href="profile.html" class="custom-close position-absolute top-0 end-0 m-2" aria-label="Close"></a>
@@ -36,13 +38,15 @@
 				</header>
 
 				<section class="delve-battlefield">
+					<div id="delveCombatFlashLayer" class="delve-combat-flash-layer" aria-live="polite"></div>
+
 					<div class="battlefield-layout">
 						<article class="combat-unit player-unit" id="playerUnit">
 							<header class="combat-unit-hud">
 								<div class="combat-unit-header">
 									<h2 id="playerName" class="combat-unit-name">Hacker</h2>
 									<div class="combat-unit-meta">
-										<span id="playerAttacks" class="delve-meta-badge delve-meta-atk"></span>
+										<span id="playerTurns" class="delve-meta-badge delve-meta-turns"></span>
 										<span id="playerLevel" class="delve-meta-badge"></span>
 										<span id="playerSpeed" class="delve-meta-badge"></span>
 										<span id="playerDR" class="delve-meta-badge"></span>
@@ -128,33 +132,46 @@
 							</div>
 						</div>
 
-						<article class="combat-unit monster-unit" id="primaryMonster" data-monster-slot="0">
-							<header class="combat-unit-hud">
-								<div class="combat-unit-header">
-									<h2 id="monsterName" class="combat-unit-name"></h2>
-									<div class="combat-unit-meta" id="monsterMeta">
-										<span id="monsterLevel" class="delve-meta-badge"></span>
-										<span id="monsterSpeed" class="delve-meta-badge"></span>
-										<span id="monsterItemQuantity" class="delve-meta-badge"></span>
-										<span id="monsterItemRarity" class="delve-meta-badge"></span>
-										<span id="monsterCurrentHP" class="delve-meta-badge"></span>
-									</div>
-								</div>
-								<div class="monster-hp-stack">
-									<div class="monster-health-bar delve-health-bar combat-unit-health">
-										<div id="health-fill" class="health-fill"></div>
-										<div class="health-label" id="health-label">HP: 100%</div>
-									</div>
-									<p id="monsterDR" class="combat-unit-hp-text"></p>
-								</div>
-								<div id="monsterMods" class="combat-mod-tags monster-mod-tags"></div>
-							</header>
-							<div class="combat-display monster-display">
-								<div id="monsterLootLayer" class="monster-loot-layer" aria-hidden="true"></div>
-								<img id="monsterImage" class="combat-sprite monster-img" alt="Monster" />
+						<div class="monster-column" id="monsterColumn">
+							<div id="combatTargetBanner" class="combat-target-banner combat-target-banner--hidden" aria-live="polite">
+								<span class="combat-target-banner__icon" aria-hidden="true">◎</span>
+								<span class="combat-target-banner__label">Target</span>
+								<span id="combatTargetName" class="combat-target-banner__name">—</span>
+								<span class="combat-target-banner__hint">Click an enemy to change target</span>
 							</div>
-							<p id="monsterDesc" class="combat-unit-desc d-none d-md-block"></p>
-						</article>
+							<div class="monster-board-wrap" id="monsterBoardWrap">
+								<button
+									type="button"
+									id="enemyFocusPrev"
+									class="enemy-focus-nav enemy-focus-nav--prev"
+									aria-label="Previous target"
+									title="Previous target"
+									hidden
+								>
+									‹
+								</button>
+								<div id="monsterBoard" class="monster-board" aria-label="Enemy targets"></div>
+								<button
+									type="button"
+									id="enemyFocusNext"
+									class="enemy-focus-nav enemy-focus-nav--next"
+									aria-label="Next target"
+									title="Next target"
+									hidden
+								>
+									›
+								</button>
+							</div>
+							<button
+								type="button"
+								id="enemyFocusBack"
+								class="enemy-focus-back"
+								title="Return to group view"
+								hidden
+							>
+								Overview
+							</button>
+						</div>
 					</div>
 
 					<div
@@ -221,7 +238,10 @@
 				<div id="delveEndOverlay" class="delve-end-overlay d-none">
 					<div class="delve-start-box text-center">
 						<h4 id="delveEndMessage" class="text-white mb-3">Victory!</h4>
-						<button class="btn btn-warning btn-lg" id="startNextDelveBtn">Start Next Delve</button>
+						<div class="delve-end-actions d-grid gap-2">
+							<button class="btn btn-warning btn-lg" id="startNextDelveBtn">Start Next Delve</button>
+							<button type="button" class="btn btn-outline-light" id="exitDelveEndBtn">Exit</button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -254,11 +274,14 @@
 		<script src="js/queryCmds.js"></script>
 		<script src="js/navbar.js"></script>
 		<script src="js/gameFullscreen.js"></script>
+		<script src="js/pageFullscreen.js"></script>
 		<script src="js/mainUtils.js"></script>
 		<script src="js/delve/modifierTierNames.js"></script>
 		<script src="js/delve/diceRollAnimator.js"></script>
+		<script src="js/delve/delveEnemyBoard.js"></script>
 		<script src="js/delve/monsterStatsSheet.js"></script>
 		<script src="js/lootImages.js"></script>
+		<script src="js/delve/dungeonRunApi.js"></script>
 		<script src="js/delve/rollDice.js"></script>
 		<script src="js/delve/delveCreator.js"></script>
 		<script src="js/notification.js"></script>

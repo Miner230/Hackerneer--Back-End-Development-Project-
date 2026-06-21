@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+		<title>Hackerneer - Dungeon Map</title>
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+		<link href="css/base.css" rel="stylesheet" />
+		<link href="css/delveMap.css" rel="stylesheet" />
+		<link href="css/orientation.css" rel="stylesheet" />
+	</head>
+
+	<body class="delve-map delve-map--standalone d-flex flex-column min-vh-100">
+		<script src="js/gameFullscreen.js"></script>
+		<script>GameFullscreen.applyPendingLayout('delve-map-fullscreen');</script>
+
+		<main id="delveMapArena" class="flex-grow-1 d-flex flex-column">
+			<header class="dungeon-map-hud">
+				<button type="button" class="dungeon-map-exit" id="exitDungeonMapBtn" aria-label="Exit dungeon map">✕</button>
+				<div class="dungeon-map-title-wrap">
+					<h1 class="dungeon-map-title">Delve Map</h1>
+					<p id="dungeonDepth" class="dungeon-map-depth">Depth 1</p>
+				</div>
+				<button type="button" class="dungeon-map-reset pixel-btn" id="resetDungeonRunBtn">New Run</button>
+			</header>
+
+			<section class="dungeon-map-stage" aria-label="Procedural dungeon floor">
+				<div class="dungeon-map-shell">
+					<div class="dungeon-map-frame">
+						<div class="dungeon-map-scanlines" aria-hidden="true"></div>
+						<div id="dungeonMap" class="dungeon-map-grid"></div>
+					</div>
+				</div>
+				<p id="dungeonMapMessage" class="dungeon-map-message" aria-live="polite"></p>
+				<p class="dungeon-map-hint">Follow lit paths from your room. Each fight room shows its enemy count before you enter.</p>
+			</section>
+		</main>
+
+		<script src="js/userAccountToggles.js"></script>
+		<script>
+			document.addEventListener('DOMContentLoaded', () => {
+				redirectIfNotLoggedIn('login.html');
+			});
+		</script>
+		<script src="js/getCurrentURL.js"></script>
+		<script src="js/orientationLock.js"></script>
+		<script src="js/queryCmds.js"></script>
+		<script src="js/gameFullscreen.js"></script>
+		<script src="js/pageFullscreen.js"></script>
+		<script src="js/delve/dungeonTypes.js"></script>
+		<script src="js/delve/dungeonEncounter.js"></script>
+		<script src="js/delve/dungeonGenerator.js"></script>
+		<script src="js/delve/dungeonMapView.js"></script>
+		<script src="js/delve/dungeonRunApi.js"></script>
+		<script src="js/delve/delveMapPage.js"></script>
+		<script src="js/notification.js"></script>
+	</body>
+</html>

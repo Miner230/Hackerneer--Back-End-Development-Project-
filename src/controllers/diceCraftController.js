@@ -112,6 +112,7 @@ module.exports.craftEssenceOntoDice = (req, res, next) => {
 				source_loot_id: essenceLootId,
 				source_rarity: essence.rarity,
 				source_name: essence.name,
+				source_kind: 'crafted',
 			};
 
 			const finishCraft = (writeError, result) => {
@@ -133,6 +134,7 @@ module.exports.craftEssenceOntoDice = (req, res, next) => {
 					source_loot_id: essenceLootId,
 					source_rarity: essence.rarity,
 					source_name: essence.name,
+					source_kind: 'crafted',
 				});
 				const updatedModifiers =
 					craftAction.action === 'upgrade'
@@ -183,6 +185,7 @@ module.exports.craftEssenceOntoDice = (req, res, next) => {
 					rolledValue,
 					sourceLootId: essenceLootId,
 					sourceRarity: essence.rarity,
+					sourceKind: 'crafted',
 				},
 				finishCraft
 			);

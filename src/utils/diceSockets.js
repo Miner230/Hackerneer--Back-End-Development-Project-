@@ -1,3 +1,5 @@
+const { modifierTierFromSourceRarity } = require('./modifierRollTiers.js');
+
 const WEIGHTING_STONE_MECHANICS = new Set([
 	'face_1',
 	'face_2',
@@ -27,6 +29,7 @@ function formatSocketRow(row) {
 		source_name: row.source_name,
 		source_stat_description: row.source_stat_description,
 		source_statline: row.source_statline,
+		roll_tier: modifierTierFromSourceRarity(row.source_rarity),
 	};
 }
 

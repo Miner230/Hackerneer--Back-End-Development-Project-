@@ -20,6 +20,9 @@ function getEquippedDiceLevel(equippedDice) {
 }
 
 function getEquippedDiceFlatDamage(equippedDice) {
+	if (typeof formatEquippedFlatDamageDisplay === 'function') {
+		return formatEquippedFlatDamageDisplay(equippedDice);
+	}
 	return equippedDice?.flat || equippedDice?.flat_damage_display || '';
 }
 
@@ -90,6 +93,12 @@ function renderEquippedDiceCenter(equippedDice) {
 }
 
 function renderEquippedDicePanel(equippedDice) {
+	if (equippedDice) {
+		window.lastEquippedDiceId = getDiceInstanceId(equippedDice);
+	} else {
+		window.lastEquippedDiceId = null;
+	}
+
 	renderDiceCraftHeader(equippedDice);
 	renderEquippedDiceCenter(equippedDice);
 

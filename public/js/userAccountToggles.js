@@ -79,6 +79,10 @@ function registerNavbarListeners() {
 		localStorage.removeItem('username');
 		localStorage.removeItem('level');
 
+		if (window.GameFullscreen?.clearPersistentMode) {
+			GameFullscreen.clearPersistentMode();
+		}
+
 		// Update navbar if function exists
 		if (typeof updateNavbarProfileLabel === 'function') {
 			updateNavbarProfileLabel();

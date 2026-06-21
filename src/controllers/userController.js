@@ -136,13 +136,14 @@ module.exports.attachXpProgress = (req, res, next) => {
 };
 
 module.exports.grantKillExperience = (req, res, next) => {
-	const instance = res.locals.instance_Data?.[0];
-	if (!instance || Number(instance.health) > 0) {
+	const formatted = res.locals.formattedDelve;
+	const allDead = formatted?.all_enemies_dead || Number(formatted?.health) <= 0;
+	if (!formatted || !allDead) {
 		return next();
 	}
 
 	const user = res.locals.user_data[0];
-	const monsterLevel = Math.max(1, Number(instance.level) || 1);
+	const monsterLevel = Math.max(1, Number(formatted.encounter_level || formatted.level) || 1);
 	const xpReward = getKillXpReward(monsterLevel);
 	const gain = applyXpGain(user.level, user.experience ?? 0, xpReward);
 
@@ -175,7 +176,9 @@ module.exports.grantKillExperience = (req, res, next) => {
 
 // Update user stats after a completed delve
 module.exports.updateUserByDelve = (req, res, next) => {
-	if (res.locals.instance_Data[0].health > 0) {
+	const formatted = res.locals.formattedDelve;
+	const allDead = formatted?.all_enemies_dead || Number(formatted?.health) <= 0;
+	if (!allDead) {
 		return next();
 	}
 

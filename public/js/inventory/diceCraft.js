@@ -186,9 +186,16 @@ function getSocketColumnSplit(socketCount) {
 }
 
 function createFilledSocketSlot(socket) {
-	const rarity = (socket.source_rarity || 'common').toLowerCase();
+	const rollTier =
+		typeof getModifierRollTierFromModifier === 'function'
+			? getModifierRollTierFromModifier(socket)
+			: null;
+	const tierClass =
+		rollTier != null && typeof getModifierTierCssKey === 'function'
+			? `tier-${getModifierTierCssKey(rollTier)}`
+			: `rarity-${(socket.source_rarity || 'common').toLowerCase()}`;
 	const slot = document.createElement('div');
-	slot.className = `dice-socket-slot dice-socket-slot--filled rarity-${rarity}`;
+	slot.className = `dice-socket-slot dice-socket-slot--filled ${tierClass}`;
 
 	const img = document.createElement('img');
 	img.src =
@@ -204,16 +211,9 @@ function createFilledSocketSlot(socket) {
 	if (typeof buildSocketedItemTooltip === 'function') {
 		const tooltip = buildSocketedItemTooltip(socket);
 		slot.appendChild(tooltip);
-		slot.addEventListener('mouseenter', () => {
-			if (typeof showInventoryTooltip === 'function') {
-				showInventoryTooltip(tooltip, slot);
-			}
-		});
-		slot.addEventListener('mouseleave', () => {
-			if (typeof hideInventoryTooltip === 'function') {
-				hideInventoryTooltip(tooltip);
-			}
-		});
+		if (typeof bindHoverTooltip === 'function') {
+			bindHoverTooltip(slot, tooltip);
+		}
 	}
 
 	return slot;
@@ -224,6 +224,15 @@ function createEmptySocketSlot(diceInstanceId) {
 	slot.className = 'dice-socket-slot dice-socket-slot--empty';
 	slot.setAttribute('aria-label', 'Empty socket');
 	slot.innerHTML = '<span class="dice-socket-slot-glyph" aria-hidden="true">◆</span>';
+
+	if (typeof buildEmptySocketTooltip === 'function') {
+		const tooltip = buildEmptySocketTooltip();
+		slot.appendChild(tooltip);
+		if (typeof bindHoverTooltip === 'function') {
+			bindHoverTooltip(slot, tooltip);
+		}
+	}
+
 	bindSocketDropTarget(slot, diceInstanceId);
 	return slot;
 }

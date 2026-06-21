@@ -4,7 +4,13 @@ const diceCraftService = require('../services/diceCraftService.js');
 const diceGearModel = require('../models/diceGearModel.js');
 const mechanicMap = require('../utils/mechanicMap.js');
 const { rollDiceItemLevel } = require('../utils/diceItemLevel.js');
-const { bulkRollLoot, insertCallback, rollMonsterLoot, rollMonsterDiceDrop } = require('../middleware/lootConfigs.js');
+const {
+	monsterItemRarityToDiceTier,
+	getModifierCountForDiceRarity,
+	rollDropModifiers,
+	resolveDiceLootId,
+} = require('../utils/diceDropModifiers.js');
+const { bulkRollLoot, insertCallback, rollMonsterLoot } = require('../middleware/lootConfigs.js');
 
 // Get all loot items
 module.exports.getAllLoot = (req, res, next) => {
@@ -71,23 +77,20 @@ module.exports.addLootToInventory = (req, res, next) => {
 
 // Grant rolled loot when a monster is defeated in delve combat.
 module.exports.grantMonsterDrops = (req, res, next) => {
-	const instance = res.locals.instance_Data?.[0];
-	if (!instance || instance.health > 0) {
+	const formatted = res.locals.formattedDelve;
+	const allDead = formatted?.all_enemies_dead || Number(formatted?.health) <= 0;
+	if (!formatted || !allDead) {
 		return next();
 	}
 
 	const lootRows = res.locals.lootRows;
-	const rollResult = rollMonsterLoot(lootRows, instance.item_quantity, instance.item_rarity);
+	const rollResult = rollMonsterLoot(lootRows, formatted.item_quantity, formatted.item_rarity);
 
 	if (rollResult.error) {
 		return res.status(500).json({ message: rollResult.error });
 	}
 
 	const dropped = rollResult.items || [];
-	const bonusDice = rollMonsterDiceDrop(lootRows, instance.item_rarity);
-	if (bonusDice) {
-		dropped.push({ ...bonusDice, quantity: 1 });
-	}
 
 	if (dropped.length === 0) {
 		res.locals.droppedLoot = [];
@@ -103,7 +106,7 @@ module.exports.grantMonsterDrops = (req, res, next) => {
 
 		items.forEach((item) => {
 			const lootMeta = lootById.get(item.id);
-			const mechanic = lootMeta?.mechanic;
+			const mechanic = item.mechanic || lootMeta?.mechanic;
 			const quantity = Math.max(1, Number(item.quantity) || 1);
 
 			if (mechanic === 'equip_dice') {
@@ -126,7 +129,10 @@ module.exports.grantMonsterDrops = (req, res, next) => {
 	const expandedDrops = expandDrops(dropped);
 
 	function enrichDrop(item, callback) {
-		if (item.mechanic !== 'equip_dice') {
+		const isEquipDice =
+			item.mechanic === 'equip_dice' || item.dice_instance_id != null;
+
+		if (!isEquipDice) {
 			return callback(null, item);
 		}
 
@@ -142,31 +148,58 @@ module.exports.grantMonsterDrops = (req, res, next) => {
 
 	function grantDrop(item, callback) {
 		if (item.mechanic === 'equip_dice') {
-			const itemLevel = rollDiceItemLevel(instance.level);
+			const itemLevel = rollDiceItemLevel(formatted.level);
+			const instanceRarity = monsterItemRarityToDiceTier(formatted.item_rarity);
+			const modifierCount = getModifierCountForDiceRarity(instanceRarity);
+			const dropModifiers = rollDropModifiers(modifierCount, lootRows);
+			const familyName = item.familyName || item.name;
+			const rolledMeta = lootById.get(item.id);
+			let lootId = resolveDiceLootId(lootRows, familyName, instanceRarity);
+
+			if (
+				!lootId &&
+				rolledMeta?.mechanic === 'equip_dice' &&
+				rolledMeta.name === familyName
+			) {
+				lootId = item.id;
+			}
+
+			if (!lootId) {
+				return callback(new Error(`No loot row for ${familyName} (${instanceRarity}).`));
+			}
+
 			return userDiceModel.addUserDice(
 				{
 					userId,
-					lootId: item.id,
+					lootId,
 					itemLevel,
-					dropRarityScore: instance.item_rarity,
+					instanceRarity,
+					dropRarityScore: formatted.item_rarity,
 				},
 				(error, result) => {
 					if (error) return callback(error);
-					diceCraftService.rebuildAndPersistDiceSnapshot(
+
+					diceCraftService.applyDropModifiers(
 						userId,
 						result.insertId,
-						(rebuildError) => {
-							if (rebuildError) return callback(rebuildError);
+						dropModifiers,
+						(modError) => {
+							if (modError) return callback(modError);
+
 							userDiceModel.selectById(
 								{ userId, diceInstanceId: result.insertId },
 								(selectError, diceRows) => {
 									if (selectError) return callback(selectError);
 									const diceRow = diceRows[0];
 									callback(null, {
-										...item,
+										id: lootId,
+										name: familyName,
+										rarity: diceRow.instance_rarity || instanceRarity,
+										mechanic: 'equip_dice',
 										dice_instance_id: result.insertId,
 										item_level: itemLevel,
 										socket_count: Number(diceRow?.socket_count) || 0,
+										modifier_count: dropModifiers.length,
 									});
 								}
 							);

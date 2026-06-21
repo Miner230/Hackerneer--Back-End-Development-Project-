@@ -1,3 +1,5 @@
+const { getTierDropWeight } = require('./lootDropWeights.js');
+
 const RARITY_TIERS = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 
 const BASIC_DIE_BASELINE = {
@@ -139,8 +141,9 @@ function getDiceTiersForFamily(familyName) {
 	return RARITY_TIERS;
 }
 
-function getDiceDropWeight(familyName) {
-	return familyName === 'Basic Die' ? 0 : 12;
+function getDiceDropWeight(familyName, rarity = 'Common') {
+	if (familyName === 'Basic Die') return 0;
+	return getTierDropWeight(rarity);
 }
 
 module.exports = {

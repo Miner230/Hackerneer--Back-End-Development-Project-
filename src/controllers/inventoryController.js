@@ -98,7 +98,7 @@ module.exports.applyDiceMutationInventory = (req, res, next) => {
 					consumables,
 				};
 
-				if (equippedId && equippedId === diceInstanceId) {
+				if (Number(equippedId) === Number(diceInstanceId)) {
 					res.locals.equippedDice = formatCompactEquippedItem(dieRow, snapshotData);
 				}
 
@@ -282,6 +282,7 @@ module.exports.grantAdminCraftingKit = (req, res, next) => {
 							userId,
 							lootId: row.id,
 							itemLevel: playerLevel,
+							instanceRarity: row.rarity || 'Legendary',
 							dropRarityScore,
 						},
 						(addError, addResult) => {

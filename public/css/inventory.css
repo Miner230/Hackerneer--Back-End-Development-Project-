@@ -63,26 +63,111 @@ body.inventory .navbar .nav-link {
 	font-size: 0.88rem;
 }
 
-body.inventory .inventory-main {
+body.inventory main {
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
-	padding: 0;
+}
+
+body.inventory.inventory-fullscreen {
+	overflow: hidden;
+}
+
+body.inventory.inventory-fullscreen #navbar-placeholder,
+body.inventory.inventory-fullscreen #footer-placeholder {
+	display: none !important;
+}
+
+body.inventory.inventory-fullscreen main {
+	height: 100dvh;
+	max-height: 100dvh;
+}
+
+body.inventory.inventory-fullscreen #inventoryArena {
+	position: fixed;
+	inset: 0;
+	z-index: 9000;
+	width: 100vw;
+	height: 100dvh;
+	max-height: 100dvh;
+	padding:
+		env(safe-area-inset-top, 0)
+		env(safe-area-inset-right, 0)
+		env(safe-area-inset-bottom, 0)
+		env(safe-area-inset-left, 0);
+	box-sizing: border-box;
+	background-color: #120b06;
+	background-image: url('https://raw.githubusercontent.com/Miner230/ca2-images/refs/heads/main/backgrounds/profilebg.png');
+	background-size: cover;
+	background-position: center;
 }
 
 .inventory-arena {
 	flex: 1;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+}
+
+.inventory-hud {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.35rem 0.75rem;
+	background: linear-gradient(180deg, rgba(18, 11, 6, 0.96) 0%, rgba(18, 11, 6, 0.78) 100%);
+	border-bottom: 1px solid rgba(201, 168, 106, 0.22);
+	z-index: 2;
+	flex-shrink: 0;
+}
+
+.inventory-back-btn {
+	flex-shrink: 0;
+	border: 1px solid rgba(201, 168, 106, 0.45);
+	border-radius: 8px;
+	background: rgba(40, 28, 16, 0.85);
+	color: #f0dfca;
+	font-size: 0.82rem;
+	font-weight: 600;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0.45rem 0.65rem;
+	letter-spacing: 0.02em;
+}
+
+.inventory-back-btn:hover {
+	background: rgba(62, 44, 24, 0.95);
+	color: #ffe7c2;
+}
+
+.inventory-hud-title {
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 600;
+	color: #ffe761;
+	letter-spacing: 0.03em;
+}
+
+.inventory-body {
 	min-height: 0;
 	overflow: hidden;
 	display: flex;
+	flex: 1;
 	justify-content: center;
+	width: 100%;
 	padding:
 		var(--inv-arena-padding)
 		max(var(--inv-arena-padding), env(safe-area-inset-right, 0))
 		max(var(--inv-arena-padding), env(safe-area-inset-bottom, 0))
 		max(var(--inv-arena-padding), env(safe-area-inset-left, 0));
+}
+
+.inventory-arena > .overlay,
+.inventory-arena > .claimOverlay {
+	z-index: 9500;
 }
 
 .inventory-layout {
@@ -243,6 +328,18 @@ body.inventory .inventory-main {
 	margin-bottom: 0.15rem;
 }
 
+.tooltip-dice-summary {
+	color: #cbbba0;
+	font-size: 0.78rem;
+	line-height: 1.25;
+	margin-bottom: 0.08rem;
+}
+
+.tooltip-dice-summary--flat {
+	color: #9fd6ff;
+	margin-bottom: 0.12rem;
+}
+
 .tooltip-stat--flat {
 	color: #9fd6ff;
 }
@@ -281,6 +378,43 @@ body.inventory .inventory-main {
 	color: #7f7363;
 	font-style: italic;
 	justify-content: flex-start;
+}
+
+.tooltip-affix-compact--crafted {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.1rem;
+}
+
+.tooltip-affix-main {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.35rem;
+	flex-wrap: wrap;
+	width: 100%;
+}
+
+.tooltip-affix-stat {
+	color: #d8c8b0;
+}
+
+.tooltip-affix-source,
+.affix-source {
+	display: block;
+	color: #7f7363;
+	font-size: 0.66rem;
+	line-height: 1.2;
+}
+
+.affix-row--crafted {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.12rem;
+}
+
+.affix-row--crafted .affix-row-main {
+	width: 100%;
 }
 
 .tooltip-affix-name {
@@ -470,7 +604,7 @@ body.inventory .inventory-main {
 }
 
 @media (max-width: 480px) {
-	.inventory-arena {
+	.inventory-body {
 		padding: 0.3rem;
 	}
 
@@ -993,8 +1127,9 @@ input[type='number']::-webkit-outer-spin-button {
 .affix-row-main {
 	display: flex;
 	justify-content: space-between;
-	align-items: baseline;
-	gap: 0.5rem;
+	align-items: center;
+	gap: 0.35rem;
+	flex-wrap: wrap;
 }
 
 .affix-stat {
@@ -1119,6 +1254,96 @@ input[type='number']::-webkit-outer-spin-button {
 .affix-row.affix-row--rarity-legendary .affix-stat,
 .affix-row.affix-row--rarity-legendary .affix-value {
 	color: #ffb347;
+}
+
+.affix-row.affix-row--tier-t0 .affix-stat,
+.affix-row.affix-row--tier-t0 .affix-value {
+	color: #ffb347;
+}
+
+.affix-row.affix-row--tier-t1 .affix-stat,
+.affix-row.affix-row--tier-t1 .affix-value {
+	color: #c77dff;
+}
+
+.affix-row.affix-row--tier-t2 .affix-stat,
+.affix-row.affix-row--tier-t2 .affix-value {
+	color: #5aa8ff;
+}
+
+.affix-row.affix-row--tier-t3 .affix-stat,
+.affix-row.affix-row--tier-t3 .affix-value {
+	color: #5fd65f;
+}
+
+.affix-row.affix-row--tier-t4 .affix-stat,
+.affix-row.affix-row--tier-t4 .affix-value {
+	color: #b8b8b8;
+}
+
+.affix-tier-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.45rem;
+	padding: 0.05rem 0.28rem;
+	border-radius: 4px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	font-size: 0.62rem;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	line-height: 1.2;
+	flex-shrink: 0;
+}
+
+.affix-tier-badge--t0 {
+	color: #ffb347;
+	border-color: rgba(255, 179, 71, 0.45);
+	background: rgba(255, 179, 71, 0.12);
+}
+
+.affix-tier-badge--t1 {
+	color: #c77dff;
+	border-color: rgba(199, 125, 255, 0.45);
+	background: rgba(199, 125, 255, 0.12);
+}
+
+.affix-tier-badge--t2 {
+	color: #5aa8ff;
+	border-color: rgba(90, 168, 255, 0.45);
+	background: rgba(90, 168, 255, 0.12);
+}
+
+.affix-tier-badge--t3 {
+	color: #5fd65f;
+	border-color: rgba(95, 214, 95, 0.45);
+	background: rgba(95, 214, 95, 0.12);
+}
+
+.affix-tier-badge--t4 {
+	color: #b8b8b8;
+	border-color: rgba(184, 184, 184, 0.35);
+	background: rgba(184, 184, 184, 0.1);
+}
+
+.dice-socket-slot--filled.tier-t0 {
+	box-shadow: 0 0 8px rgba(255, 179, 71, 0.55);
+}
+
+.dice-socket-slot--filled.tier-t1 {
+	box-shadow: 0 0 7px rgba(199, 125, 255, 0.5);
+}
+
+.dice-socket-slot--filled.tier-t2 {
+	box-shadow: 0 0 6px rgba(90, 168, 255, 0.5);
+}
+
+.dice-socket-slot--filled.tier-t3 {
+	box-shadow: 0 0 5px rgba(95, 214, 95, 0.45);
+}
+
+.dice-socket-slot--filled.tier-t4 {
+	box-shadow: 0 0 4px rgba(184, 184, 184, 0.35);
 }
 
 .affix-empty--socket {

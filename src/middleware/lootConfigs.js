@@ -73,40 +73,6 @@ function rollMonsterLoot(lootRows, itemQuantity, itemRarity) {
 	return { items: Object.values(claimedMap) };
 }
 
-const MONSTER_DICE_DROP_CHANCE = 0.15;
-
-function rollInstanceRarity(itemRarity) {
-	const pool = RARITY_TIERS.map((rarity) => ({
-		id: rarity,
-		rarity,
-		weight: 1,
-	}));
-	const selected = pickWeightedLoot(pool, itemRarity);
-	return selected?.rarity || 'Common';
-}
-
-function rollMonsterDiceDrop(lootRows, itemRarity = 0) {
-	if (Math.random() >= MONSTER_DICE_DROP_CHANCE) {
-		return null;
-	}
-
-	const dicePool = (lootRows || []).filter(
-		(item) => item.mechanic === 'equip_dice' && Math.max(0, Number(item.weight) || 0) > 0
-	);
-	if (dicePool.length === 0) return null;
-
-	const selected = pickWeightedLoot(dicePool, itemRarity);
-	if (!selected) return null;
-
-	return {
-		id: selected.id,
-		name: selected.name,
-		rarity: selected.rarity,
-		quantity: 1,
-		mechanic: selected.mechanic,
-	};
-}
-
 // Rolls multiple loot items based on weighted probabilities.
 // Validates user has enough loot shards before rolling.
 // Groups duplicates in the claimed result.
@@ -199,8 +165,6 @@ module.exports = {
 	bulkRollLoot,
 	insertCallback,
 	rollMonsterLoot,
-	rollMonsterDiceDrop,
-	rollInstanceRarity,
 	pickWeightedLoot,
 	getDropWeight,
 	getRarityTierIndex,
